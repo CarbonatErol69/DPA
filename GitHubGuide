@@ -1,0 +1,23 @@
+in die cmd-Zeile gelangen:
+- C:\Users\Tim.Schmidt\OneDrive - Zentis\02 Schule\03 Oberstufe\SuD\00 Abschlussprojekt\DPAvsBWV # gitrepo
+--> in den Pfad klicken und "cmd" eingeben + enter hitten
+
+
+zwischen repositorys wechseln:
+- git remote -v
+- git remote remove <Name_des_Remotes>
+- git remote remove origin
+- git remote add <Name_des_Remotes> <URL_des_neuen_Repositories>
+- git remote -v
+
+
+
+aus VSCode nach GitHub publishen:
+- git add .
+- git status
+- git commit -m "2024.02.01" # Datum ist bsp.
+- git push origin devTSLP
+
+
+- blabliblup
+-----
