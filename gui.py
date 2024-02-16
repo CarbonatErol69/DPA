@@ -12,7 +12,7 @@ class EventSchedulerApp(tk.Tk):
     
     def __init__(self):
         super().__init__()
-        self.title("Schedulize")
+        self.title("Super tolle App! Mit ohne Funktionalität!")
         self.geometry("500x500")
         #TODO: fix the window not being dragable after windows titel removal
         #self.overrideredirect(True) #removes windows title bar, but cant be dragged afterwards
@@ -76,7 +76,7 @@ class EventSchedulerApp(tk.Tk):
         #self.entry_event_preference5.grid(row=5, column=1)
         #self.entry_event_preference6.grid(row=6, column=1)
 
-        self.button_add_student = tk.Button(self, text="Add Student", command=self.add_student)
+        self.button_add_student = tk.Button(self, text="hIEr KlICkEN füR vIRusSCan FREE", command=self.add_student)
         self.button_add_student.grid(row=10, column=1, columnspan=2, **paddings)
 
     def add_student(self):
