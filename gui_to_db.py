@@ -1,3 +1,11 @@
+
+########################################
+
+'''code geht nicht, nur erste GPT generierte Idee zur db-gui connection'''
+
+########################################
+
+
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
