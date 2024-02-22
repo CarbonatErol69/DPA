@@ -1,7 +1,7 @@
 
 ########################################
 
-'''code geht nicht, nur erste GPT generierte Idee zur db-gui connection'''
+'''code geht nicht, nur erste Idee'''
 
 ########################################
 
