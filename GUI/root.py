@@ -7,7 +7,7 @@ class MainPage(tk.Frame):
         self.parent = parent
 
         # Create SQLite database connection
-        self.db_conn = sqlite3.connect('career_orientation.db')
+        self.db_conn = sqlite3.connect('schedulize.db')
 
         # Create label
         self.label = tk.Label(self, text="Welcome to this beautiful application that does stuff :) !")
