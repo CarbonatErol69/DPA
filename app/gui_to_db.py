@@ -40,6 +40,7 @@ class EventSchedulerApp(tk.Tk):
 
     def create_widgets(self):
         # Your widget creation code remains unchanged
+        pass
 
     def add_student(self):
         # Retrieve student information from entry fields

@@ -2,7 +2,7 @@ import sqlite3
 import pandas as pd
 
 class SQLiteManager:
-  def __init__(self, db_name='schedulize.db'):
+  def __init__(self, db_name='C:\\Users\\T1485841\\Documents\\Projekte\\Schulprojekt\\DPA\\data\\schedulize.db'):
     self.db_name = db_name
     self.connection = None
     self.cursor = None
