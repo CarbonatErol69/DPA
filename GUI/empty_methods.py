@@ -15,4 +15,15 @@ class EmptyMethods:
     def make_list(self):
         pass
 
-    
+    #TODO: delete student 
+    def delete_student(self):
+        pass
+
+    def delete_company(self):
+        pass
+
+    def add_student(self):	#with the first button only?
+        pass
+
+    def add_company(self): # "
+        pass

@@ -66,7 +66,7 @@ class EventSchedulerApp(tk.Tk):
         for i, entry in enumerate(self.entry_event_preferences):
             entry.grid(row= i+4, column = 1, **paddings) 
             #i+4 statt i+1 da wir grid layout manager benutzen
-        #TODO: Ohrfeige, 30 min gebraucht um columns zu column zu machen um bug zu fixen
+        #TODO: Ohrfeige, 30 min gebraucht um columns zu column zu machen um bug zu fixen DONE
 
         self.label_event_preference.grid(row=3, column=0, sticky="w", **paddings)
         #self.entry_event_preference1.grid(row=1, column=1)
