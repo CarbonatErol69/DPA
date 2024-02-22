@@ -27,3 +27,8 @@ class EmptyMethods:
 
     def add_company(self): # "
         pass
+
+    def create_student_table(self):
+        pass
+
+    
