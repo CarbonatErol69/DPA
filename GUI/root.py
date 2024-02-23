@@ -1,5 +1,8 @@
 import tkinter as tk
 import sqlite3
+from add_student_page import AddStudentPage
+from make_list_page import MakeListPage
+from add_event_page import AddEventPage
 
 class MainPage(tk.Frame):
     def __init__(self, parent):
@@ -10,12 +13,12 @@ class MainPage(tk.Frame):
         self.db_conn = sqlite3.connect('schedulize.db')
 
         # Create label
-        self.label = tk.Label(self, text="Welcome to this beautiful application that does stuff :) !")
+        self.label = tk.Label(self, text="Welcome to this beautiful application that does fk all :) !")
 
         # Create buttons
         self.add_student_button = tk.Button(self, text="Add student", command=self.go_add_student)
-        self.add_company_button = tk.Button(self, text="Add company", command=self.go_add_company)
-        self.make_list_button = tk.Button(self, text="Make list", command=self.make_list)
+        self.add_company_button = tk.Button(self, text="Add event", command=self.go_add_event)
+        self.make_list_button = tk.Button(self, text="Make list", command=self.go_make_list)
         self.close_button = tk.Button(self, text="Close", command=self.close_program)
         self.delete_student_button = tk.Button(self, text="Delete student", command=self.delete_student)
         self.delete_company_button = tk.Button(self, text="Delete company", command=self.delete_company)
@@ -25,21 +28,22 @@ class MainPage(tk.Frame):
         self.add_student_button.grid(row=1, column=0, padx=10, pady=10)
         self.add_company_button.grid(row=2, column=0, padx=10, pady=10)
         self.make_list_button.grid(row=3, column=0, padx=10, pady=10)
-        self.close_button.grid(row=4, column=0, padx=10, pady=10)
+        self.close_button.grid(row=7, column=0, padx=10, pady=10)
         self.delete_student_button.grid(row=5, column=0, padx=10, pady=10)
         self.delete_company_button.grid(row=6, column=0, padx=10, pady=10)
 
     def go_add_student(self):
-        # Implement logic to add a student to the database
-        print("Adding student...")  # Placeholder message
+    # Hide the main page and show the add student page
+        self.pack_forget()
+        AddStudentPage(self.parent, self).pack()
 
-    def go_add_company(self):
-        # Implement logic to add a company to the database
-        print("Adding company...")  # Placeholder message
+    def go_add_event(self):
+        self.pack_forget()
+        AddEventPage(self.parent, self).pack()
 
-    def make_list(self):
-        # Implement logic to retrieve data from the database and make a list
-        print("Making list...")  # Placeholder message
+    def go_make_list(self):
+        self.pack_forget()
+        MakeListPage(self.parent, self).pack()
 
     def close_program(self):
         # Close the application
