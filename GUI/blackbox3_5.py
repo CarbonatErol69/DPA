@@ -7,7 +7,7 @@ def create_database():
     try:
         conn = sqlite3.connect(f'database_{year_entry.get()}.db')
         cursor = conn.cursor()
-        cursor.execute('''CREATE TABLE IF NOT EXISTS students (id INTEGER PRIMARY KEY, name TEXT, age INTEGER, company TEXT)''')
+        cursor.execute('''CREATE TABLE IF NOT EXISTS wahlen (id INTEGER PRIMARY KEY, name TEXT, age INTEGER, company TEXT)''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY, name TEXT, date TEXT, company TEXT)''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS companies (id INTEGER PRIMARY KEY, name TEXT, restrictions TEXT)''')
         conn.commit()
@@ -23,7 +23,7 @@ def read_excel_file():
         try:
             df = pd.read_excel(file_path)
             conn = sqlite3.connect(f'database_{year_entry.get()}.db')
-            df.to_sql('students', con=conn, if_exists='append', index=False)
+            df.to_sql('wahlen', con=conn, if_exists='append', index=False)
             conn.commit()
             status_label.config(text='Datei erfolgreich geladen')
         except Exception as e:
@@ -37,7 +37,7 @@ def read_excel_file_2():
         try:
             df = pd.read_excel(file_path)
             conn = sqlite3.connect(f'database_{year_entry.get()}.db')
-            df.to_sql('events', con=conn, if_exists='append', index=False)
+            df.to_sql('veranstaltungen', con=conn, if_exists='append', index=False)
             conn.commit()
             status_label.config(text='Datei erfolgreich geladen')
         except Exception as e:
@@ -51,7 +51,7 @@ def read_excel_file_3():
         try:
             df = pd.read_excel(file_path)
             conn = sqlite3.connect(f'database_{year_entry.get()}.db')
-            df.to_sql('companies', con=conn, if_exists='append', index=False)
+            df.to_sql('Unternehmen', con=conn, if_exists='append', index=False)
             conn.commit()
             status_label.config(text='Datei erfolgreich geladen')
         except Exception as e:
@@ -132,13 +132,13 @@ distribute_button.pack(fill='x', padx=10, pady=5)
 create_excel_button = tk.Button(root, text='Listen erstellen', command=create_excel_files)
 create_excel_button.pack(fill='x', padx=10, pady=10)
 
-result_label1 = tk.Label(root, text='', anchor='w', bg='black')
-result_label1.pack(fill='x', padx=10, pady=10)
+result_label1 = tk.Label(root, text='Deutsche', anchor='w', bg='black', fg='white', justify='center')
+result_label1.pack(fill='x', padx=10, pady=10) 
 
-result_label2 = tk.Label(root, text='', anchor='w', bg='red')
+result_label2 = tk.Label(root, text='Presse', anchor='w', bg='red', justify='center')
 result_label2.pack(fill='x', padx=10, pady=10)
 
-result_label3 = tk.Label(root, text='', anchor='w', bg='yellow')
+result_label3 = tk.Label(root, text='Agentur', anchor='w', bg='yellow', justify='center')
 result_label3.pack(fill='x', padx=10, pady=10)
 
 close_button = tk.Button(root, text='Schließen', command=close_program)
