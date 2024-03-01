@@ -1,80 +1,26 @@
 import tkinter as tk
 from tkinter import filedialog
 import pandas as pd
-import sqlite3
 
-def create_database():
-    try:
-        conn = sqlite3.connect(f'database_{year_entry.get()}.db')
-        cursor = conn.cursor()
-        cursor.execute('''CREATE TABLE IF NOT EXISTS wahlen (id INTEGER PRIMARY KEY, name TEXT, age INTEGER, company TEXT)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY, name TEXT, date TEXT, company TEXT)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS companies (id INTEGER PRIMARY KEY, name TEXT, restrictions TEXT)''')
-        conn.commit()
-        status_label.config(text='Database erfolgreich erstellt')
-    except Exception as e:
-        status_label.config(text=f'Error: {str(e)}')
-    finally:
-        conn.close()
-
-def read_excel_file():
-    file_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
+def read_excel_file(list):
+    file_path = filedialog.askopenfilename(filetypes=[("csv files", "*.csv")])
+    
     if file_path:
         try:
-            df = pd.read_excel(file_path)
-            conn = sqlite3.connect(f'database_{year_entry.get()}.db')
-            df.to_sql('wahlen', con=conn, if_exists='append', index=False)
-            conn.commit()
-            status_label.config(text='Datei erfolgreich geladen')
+            if list == 'Wahl':
+                df_wahl = pd.read_csv(file_path, delimiter=';')
+                status_label.config(text='Datei erfolgreich geladen')
+            elif list == 'Veranstaltung':
+                df_veranstaltung = pd.read_csv(file_path, delimiter=';')
+                status_label.config(text='Datei erfolgreich geladen')
+            elif list == 'Raum':
+                df_raum = pd.read_csv(file_path, delimiter=';')
+                status_label.config(text='Datei erfolgreich geladen')
         except Exception as e:
             status_label.config(text=f'Error: {str(e)}')
-        finally:
-            conn.close()
-
-def read_excel_file_2():
-    file_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
-    if file_path:
-        try:
-            df = pd.read_excel(file_path)
-            conn = sqlite3.connect(f'database_{year_entry.get()}.db')
-            df.to_sql('veranstaltungen', con=conn, if_exists='append', index=False)
-            conn.commit()
-            status_label.config(text='Datei erfolgreich geladen')
-        except Exception as e:
-            status_label.config(text=f'Error: {str(e)}')
-        finally:
-            conn.close()
-
-def read_excel_file_3():
-    file_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
-    if file_path:
-        try:
-            df = pd.read_excel(file_path)
-            conn = sqlite3.connect(f'database_{year_entry.get()}.db')
-            df.to_sql('Unternehmen', con=conn, if_exists='append', index=False)
-            conn.commit()
-            status_label.config(text='Datei erfolgreich geladen')
-        except Exception as e:
-            status_label.config(text=f'Error: {str(e)}')
-        finally:
-            conn.close()
 
 def distribute_students():
-    try:
-        conn = sqlite3.connect(f'database_{year_entry.get()}.db')
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM students")
-        students = cursor.fetchall()
-        cursor.execute("SELECT * FROM events")
-        events = cursor.fetchall()
-        cursor.execute("SELECT * FROM companies")
-        companies = cursor.fetchall()
-        result = distribute_students_over_events(students, events, companies)
-        result_label.config(text=result)
-    except Exception as e:
-        result_label.config(text=f'Error: {str(e)}')
-    finally:
-        conn.close()
+    pass
 
 def distribute_students_over_events(students, events, companies):
     result = ''
@@ -117,13 +63,13 @@ year_entry.pack(fill='x', padx=10, pady=5)
 create_database_button = tk.Button(root, text='Database erstellen', command=create_database)
 create_database_button.pack(fill='x', padx=10, pady=5)
 
-read_excel_button = tk.Button(root, text='Wahl der Schüler laden', command=read_excel_file)
+read_excel_button = tk.Button(root, text='Wahl der Schüler laden', command=read_excel_file('Wahl'))
 read_excel_button.pack(fill='x', padx=10, pady=5)
 
-read_excel_button_2 = tk.Button(root, text='Raumliste laden', command=read_excel_file_2)
+read_excel_button_2 = tk.Button(root, text='Raumliste laden', command=read_excel_file('Raum'))
 read_excel_button_2.pack(fill='x', padx=10, pady=5)
 
-read_excel_button_3 = tk.Button(root, text='Veranstaltungsliste laden', command=read_excel_file_3)
+read_excel_button_3 = tk.Button(root, text='Veranstaltungsliste laden', command=read_excel_file('Veranstaltung'))
 read_excel_button_3.pack(fill='x', padx=10, pady=5)
 
 distribute_button = tk.Button(root, text='Schüler verteilen', command=distribute_students)
