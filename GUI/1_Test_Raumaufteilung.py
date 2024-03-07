@@ -4,7 +4,7 @@ import pandas as pd
 
 # Dateipfade
 
-schueler_wahlen_path = 'C://Users//SE//Desktop//IMPORT_BOT2_wahl.xlsx'
+schueler_wahlen_path = 'C://Users//SE//Desktop//IMPORT_BOT2_Wahl.xlsx'
 raumliste_path = 'C://Users//SE//Desktop//IMPORT_BOT0_Raumliste.xlsx'
 veranstaltungsliste_path = 'C://Users//SE//Desktop//IMPORT_BOT1_Veranstaltungsliste.xlsx'
 
@@ -68,6 +68,7 @@ for _, event in veranstaltungsliste_df_sorted.iterrows():
                     'Raum': raum_id,
                     'Zeitslot': zeitslot
                 }, ignore_index=True)
+
                 
                 # Überprüfe die nächste Veranstaltung des gleichen Unternehmens
                 # und versuche, sie im gleichen Raum und im direkt folgenden Zeitslot zu platzieren
