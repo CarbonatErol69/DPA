@@ -3,11 +3,11 @@ import numpy as np
 import pandas as pd
 
 # Dateipfade
-schueler_wahlen_path = 'C://Users//SE//Schulprojekt//DPA//data//IMPORT BOT2_Schülerwahlen.xlsx'
-raumliste_path = 'C://Users//SE//Schulprojekt//DPA//data//IMPORT BOT0_Raumliste.xlsx'
-veranstaltungsliste_path = 'C://Users//SE//Schulprojekt//DPA//data//IMPORT BOT1_Veranstaltungsliste.xlsx'
+schueler_wahlen_path = 'C://Users//SE//Schulprojekt//DPA//Data//IMPORT BOT2_Schülerwahlen.xlsx'
+raumliste_path = 'C://Users//SE//Schulprojekt//DPA//Data//IMPORT BOT0_Raumliste.xlsx'
+veranstaltungsliste_path = 'C://Users//SE//Schulprojekt//DPA//Data//IMPORT BOT1_Veranstaltungsliste.xlsx'
 
-# Einlesen der Dateien
+# Einlesen der Dateien in Dataframes
 schuelerwahlen_df = pd.read_excel(schueler_wahlen_path)
 raumliste_df = pd.read_excel(raumliste_path)
 veranstaltungsliste_df = pd.read_excel(veranstaltungsliste_path)
@@ -37,7 +37,7 @@ event_assignments_df = pd.DataFrame(event_assignments, columns=['VeranstaltungsN
 print(event_assignments_df.head())
 
 
-# Konvertiere 'Frühester Zeitpunkt' in numerische Werte, falls noch nicht geschehen
+# Konvertiere 'Frühester Zeitpunkt' in numerische Werte
 zeitpunkt_mapping = {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5}
 veranstaltungsliste_df['Frühester Zeitpunkt Num'] = veranstaltungsliste_df['Frühester Zeitpunkt'].map(zeitpunkt_mapping)
 
@@ -95,3 +95,37 @@ for index, schueler in schuelerwahlen_df.iterrows():
             break
 schueler_zuweisung_df = pd.DataFrame([(k, v) for k, v in schueler_zuweisung.items()], columns=['Schüler', 'Zugewiesene VeranstaltungsNrn'])
 print(schueler_zuweisung_df.head())
+
+
+
+
+# Exportieren der Daten in Excel-Dateien
+
+# 1. Anwesenheitslisten je Veranstaltung
+anwesenheitslisten_path = 'C://Users//SE//Schulprojekt//DPA//Data//Export//EXPORT_BOT5_Anwesenheitslisten.xlsx'
+anwesenheitslisten = defaultdict(list)
+for schueler, veranstaltungsnummern in schueler_zuweisung.items():
+    for veranstaltungsnummer in veranstaltungsnummern:
+        anwesenheitslisten[veranstaltungsnummer].append(schueler)
+anwesenheitslisten_df = pd.DataFrame([(veranstaltungsnummer, ", ".join(schueler)) for veranstaltungsnummer, schueler in anwesenheitslisten.items()], columns=['VeranstaltungsNr', 'Teilnehmende Schüler'])
+anwesenheitslisten_df.to_excel(anwesenheitslisten_path, index=False)
+
+# 2. Raum- und Zeitplan
+raum_zeitplan_path = '/mnt/data/C://Users//SE//Schulprojekt//DPA//Data//Export//EXPORT_BOT3_Raum_und_Zeitplan.xlsx'
+raum_zeitplan_df = veranstaltung_zeitslot_raum.merge(veranstaltungsliste_df, left_on='VeranstaltungsNr', right_on='Nr. ', how='left')[['VeranstaltungsNr', 'Raum', 'Zeitslot', 'Unternehmen', 'Fachrichtung']]
+raum_zeitplan_df.to_excel(raum_zeitplan_path, index=False)
+
+# 3. Laufzettel für Schüler
+laufzettel_path = '/mnt/dataC://Users//SE//Schulprojekt//DPA//Data//Export//EXPORT_BOT6_Laufzettel.xlsx'
+laufzettel_list = []
+for schueler, veranstaltungsnummern in schueler_zuweisung.items():
+    for veranstaltungsnummer in veranstaltungsnummern:
+        raum_und_zeit = raum_zeitplan_df[raum_zeitplan_df['VeranstaltungsNr'] == veranstaltungsnummer][['Raum', 'Zeitslot']].values[0]
+        laufzettel_list.append([schueler, veranstaltungsnummer, raum_und_zeit[0], raum_und_zeit[1]])
+laufzettel_df = pd.DataFrame(laufzettel_list, columns=['Schüler', 'VeranstaltungsNr', 'Raum', 'Zeitslot'])
+laufzettel_df.to_excel(laufzettel_path, index=False)
+
+# Ausgabe der Pfade zu den erstellten Excel-Dateien
+print(f"Anwesenheitslisten gespeichert unter: {anwesenheitslisten_path}")
+print(f"Raum- und Zeitplan gespeichert unter: {raum_zeitplan_path}")
+print(f"Laufzettel für Schüler gespeichert unter: {laufzettel_path}")
