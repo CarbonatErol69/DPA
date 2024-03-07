@@ -3,9 +3,9 @@ import numpy as np
 import pandas as pd
 
 # Dateipfade
-schueler_wahlen_path = 'C://Users//SE//Schulprojekt//DPA//Data//IMPORT BOT2_Schülerwahlen.xlsx'
-raumliste_path = 'C://Users//SE//Schulprojekt//DPA//Data//IMPORT BOT0_Raumliste.xlsx'
-veranstaltungsliste_path = 'C://Users//SE//Schulprojekt//DPA//Data//IMPORT BOT1_Veranstaltungsliste.xlsx'
+schueler_wahlen_path = 'C://Users//SE//Schulprojekt//DPA//Data//IMPORT_BOT2_Schülerwahlen.xlsx'
+raumliste_path = 'C://Users//SE//Schulprojekt//DPA//Data//IMPORT_BOT0_Raumliste.xlsx'
+veranstaltungsliste_path = 'C://Users//SE//Schulprojekt//DPA//Data//IMPORT_BOT1_Veranstaltungsliste.xlsx'
 
 # Einlesen der Dateien in Dataframes
 schuelerwahlen_df = pd.read_excel(schueler_wahlen_path)
@@ -111,12 +111,12 @@ anwesenheitslisten_df = pd.DataFrame([(veranstaltungsnummer, ", ".join(schueler)
 anwesenheitslisten_df.to_excel(anwesenheitslisten_path, index=False)
 
 # 2. Raum- und Zeitplan
-raum_zeitplan_path = '/mnt/data/C://Users//SE//Schulprojekt//DPA//Data//Export//EXPORT_BOT3_Raum_und_Zeitplan.xlsx'
+raum_zeitplan_path = 'C://Users//SE//Schulprojekt//DPA//Data//Export//EXPORT_BOT3_Raum_und_Zeitplan.xlsx'
 raum_zeitplan_df = veranstaltung_zeitslot_raum.merge(veranstaltungsliste_df, left_on='VeranstaltungsNr', right_on='Nr. ', how='left')[['VeranstaltungsNr', 'Raum', 'Zeitslot', 'Unternehmen', 'Fachrichtung']]
 raum_zeitplan_df.to_excel(raum_zeitplan_path, index=False)
 
 # 3. Laufzettel für Schüler
-laufzettel_path = '/mnt/dataC://Users//SE//Schulprojekt//DPA//Data//Export//EXPORT_BOT6_Laufzettel.xlsx'
+laufzettel_path = 'C://Users//SE//Schulprojekt//DPA//Data//Export//EXPORT_BOT6_Laufzettel.xlsx'
 laufzettel_list = []
 for schueler, veranstaltungsnummern in schueler_zuweisung.items():
     for veranstaltungsnummer in veranstaltungsnummern:
@@ -124,6 +124,7 @@ for schueler, veranstaltungsnummern in schueler_zuweisung.items():
         laufzettel_list.append([schueler, veranstaltungsnummer, raum_und_zeit[0], raum_und_zeit[1]])
 laufzettel_df = pd.DataFrame(laufzettel_list, columns=['Schüler', 'VeranstaltungsNr', 'Raum', 'Zeitslot'])
 laufzettel_df.to_excel(laufzettel_path, index=False)
+
 
 # Ausgabe der Pfade zu den erstellten Excel-Dateien
 print(f"Anwesenheitslisten gespeichert unter: {anwesenheitslisten_path}")
