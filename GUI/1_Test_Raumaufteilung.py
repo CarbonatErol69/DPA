@@ -36,6 +36,49 @@ for _, event in veranstaltungsliste_df.iterrows():
 event_assignments_df = pd.DataFrame(event_assignments, columns=['VeranstaltungsNr', 'Raum', 'Zeitslot'])
 print(event_assignments_df.head())
 
+
+# Konvertiere 'Frühester Zeitpunkt' in numerische Werte, falls noch nicht geschehen
+zeitpunkt_mapping = {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5}
+veranstaltungsliste_df['Frühester Zeitpunkt Num'] = veranstaltungsliste_df['Frühester Zeitpunkt'].map(zeitpunkt_mapping)
+
+# Sortiere Veranstaltungen nach Unternehmen und Frühestem Zeitpunkt Num
+veranstaltungsliste_df_sorted = veranstaltungsliste_df.sort_values(by=['Unternehmen', 'Frühester Zeitpunkt Num'])
+
+# Erstelle eine Mapping-Tabelle für die Zuweisung von Veranstaltungen zu Zeitslots und Räumen
+veranstaltung_zeitslot_raum = pd.DataFrame(columns=['VeranstaltungsNr', 'Raum', 'Zeitslot'])
+
+# Halte fest, welche Zeitslots in welchen Räumen bereits belegt sind
+raum_zeitslot_belegt = defaultdict(set)
+
+# Iteriere durch sortierte Veranstaltungsliste und weise Zeitslots und Räume zu
+for _, event in veranstaltungsliste_df_sorted.iterrows():
+    veranstaltungs_nr = event['Nr. ']
+    unternehmen = event['Unternehmen']
+    frühester_zeitpunkt = event['Frühester Zeitpunkt Num']
+    
+    for raum_id in raumliste_df['Raum']:
+        for zeitslot in range(frühester_zeitpunkt, 6):  # Angenommen, es gibt 5 Zeitslots pro Tag
+            # Überprüfe, ob der Zeitslot für diesen Raum bereits belegt ist
+            if zeitslot not in raum_zeitslot_belegt[raum_id]:
+                # Zuweisung des Zeitslots und Raums zur Veranstaltung
+                raum_zeitslot_belegt[raum_id].add(zeitslot)
+                veranstaltung_zeitslot_raum = veranstaltung_zeitslot_raum.append({
+                    'VeranstaltungsNr': veranstaltungs_nr,
+                    'Raum': raum_id,
+                    'Zeitslot': zeitslot
+                }, ignore_index=True)
+                
+                # Überprüfe die nächste Veranstaltung des gleichen Unternehmens
+                # und versuche, sie im gleichen Raum und im direkt folgenden Zeitslot zu platzieren
+                break  # Breche die innere Schleife ab, da ein Zeitslot zugewiesen wurde
+        if veranstaltung_zeitslot_raum[veranstaltung_zeitslot_raum['VeranstaltungsNr'] == veranstaltungs_nr].shape[0] > 0:
+            break  # Breche die äußere Schleife ab, da der Raum zugewiesen wurde
+
+# Anzeigen der aktualisierten Zuweisungen
+print(veranstaltung_zeitslot_raum.head())
+
+
+
 # Schritt 3: Schüler den Veranstaltungen zuweisen
 aktuelle_teilnehmerzahl = defaultdict(int)
 schueler_zuweisung = defaultdict(list)
