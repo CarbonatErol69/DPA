@@ -7,10 +7,17 @@ schueler_wahlen_path = 'C://Users//SE//Desktop//IMPORT_BOT2_Wahl.xlsx'
 raumliste_path = 'C://Users//SE//Desktop//IMPORT_BOT0_Raumliste.xlsx'
 veranstaltungsliste_path = 'C://Users//SE//Desktop//IMPORT_BOT1_Veranstaltungsliste.xlsx'
 
+
 # Einlesen der Dateien in Dataframes
 schuelerwahlen_df = pd.read_excel(schueler_wahlen_path)
 raumliste_df = pd.read_excel(raumliste_path)
 veranstaltungsliste_df = pd.read_excel(veranstaltungsliste_path)
+
+
+# Konvertiere 'Frühester Zeitpunkt' in numerische Werte
+zeitpunkt_mapping = {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5}
+veranstaltungsliste_df['Frühester Zeitpunkt Num'] = veranstaltungsliste_df['Frühester Zeitpunkt'].map(zeitpunkt_mapping)
+
 
 # Anzeigen der ersten Zeilen jeder Tabelle, um die Struktur zu verstehen
 print(schuelerwahlen_df.head(), raumliste_df.head(), veranstaltungsliste_df.head())
@@ -25,7 +32,6 @@ event_requirements_df['Mindestanzahl Events'] = (event_requirements_df['Anzahl W
 print(event_requirements_df[['VeranstaltungsNr', 'Unternehmen', 'Fachrichtung', 'Anzahl Wünsche', 'Max. Teilnehmer', 'Mindestanzahl Events']])
 
 # Schritt 2: Zuweisung von Veranstaltungen zu Räumen und Zeitslots
-# Korrektur: Initialisieren Sie den DataFrame korrekt, um den AttributeError zu vermeiden
 veranstaltung_zeitslot_raum = pd.DataFrame(columns=['VeranstaltungsNr', 'Raum', 'Zeitslot'])
 available_slots_per_room = {room: [1, 2, 3, 4, 5] for room in raumliste_df['Raum']}
 raum_zeitslot_belegt = defaultdict(set)
