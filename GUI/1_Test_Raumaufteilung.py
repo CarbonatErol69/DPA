@@ -1,6 +1,7 @@
 from collections import defaultdict
 import numpy as np
 import pandas as pd
+import os
 
 # Dateipfade
 schueler_wahlen_path = 'C://Users//SE//Desktop//IMPORT_BOT2_Wahl.xlsx'
@@ -31,46 +32,74 @@ event_requirements_df = pd.merge(choice_counts_df, veranstaltungsliste_df, left_
 event_requirements_df['Mindestanzahl Events'] = (event_requirements_df['Anzahl Wünsche'] / event_requirements_df['Max. Teilnehmer']).apply(np.ceil)
 print(event_requirements_df[['VeranstaltungsNr', 'Unternehmen', 'Fachrichtung', 'Anzahl Wünsche', 'Max. Teilnehmer', 'Mindestanzahl Events']])
 
-# Schritt 2: Zuweisung von Veranstaltungen zu Räumen und Zeitslots
-veranstaltung_zeitslot_raum = pd.DataFrame(columns=['VeranstaltungsNr', 'Raum', 'Zeitslot'])
-available_slots_per_room = {room: [1, 2, 3, 4, 5] for room in raumliste_df['Raum']}
-raum_zeitslot_belegt = defaultdict(set)
 
-for _, event in veranstaltungsliste_df.iterrows():
-    veranstaltungs_nr = event['Nr. ']
-    unternehmen = event['Unternehmen']
-    frühester_zeitpunkt = event['Frühester Zeitpunkt Num']
+# Schritt 2: Veranstaltungen den Räumen und Zeitslots zuordnen
+# Diese Funktion ordnet die Veranstaltungen zu, unter Berücksichtigung der Unternehmens- und Fachrichtungslogik.
+def zuordnung_veranstaltungen_zu_raeumen(veranstaltungsliste_df, raumliste_df):
+    # Initialisierung der notwendigen Strukturen
+    veranstaltung_zu_raum_zeit = []
+    raum_verfuegbarkeit = {raum: list(range(1, 6)) for raum in raumliste_df['Raum']}
+    unternehmen_zuletzt_im_raum = {}
     
-    for raum_id in raumliste_df['Raum']:
-        for zeitslot in range(frühester_zeitpunkt, 6):  # Angenommen, es gibt 5 Zeitslots pro Tag
-            if zeitslot not in raum_zeitslot_belegt[raum_id]:
-                raum_zeitslot_belegt[raum_id].add(zeitslot)
-                neuer_eintrag = pd.DataFrame([[veranstaltungs_nr, raum_id, zeitslot]], columns=['VeranstaltungsNr', 'Raum', 'Zeitslot'])
-                veranstaltung_zeitslot_raum = pd.concat([veranstaltung_zeitslot_raum, neuer_eintrag], ignore_index=True)
-                break  # Beende die Schleife, wenn Zuweisung erfolgt
-        if any(veranstaltung_zeitslot_raum['VeranstaltungsNr'] == veranstaltungs_nr):
-            break  # Beende die Schleife, wenn Raum zugewiesen wurde
+    # Sortiere Veranstaltungen nach Unternehmen und Fachrichtung
+    sortierte_veranstaltungen = veranstaltungsliste_df.sort_values(by=['Unternehmen', 'Fachrichtung', 'Frühester Zeitpunkt Num'])
 
-print(veranstaltung_zeitslot_raum.head())
+    # Durchgehe alle Veranstaltungen und ordne sie zu
+    for _, veranstaltung in sortierte_veranstaltungen.iterrows():
+        veranstaltungs_id = veranstaltung['Nr. ']
+        unternehmen = veranstaltung['Unternehmen']
+        for raum, zeitslots in raum_verfuegbarkeit.items():
+            if unternehmen in unternehmen_zuletzt_im_raum and unternehmen_zuletzt_im_raum[unternehmen] != raum:
+                continue  # Überspringe, wenn das Unternehmen bereits einem anderen Raum zugeordnet wurde
+            for zeitslot in zeitslots:
+                # Zuordnung der Veranstaltung zum ersten verfügbaren Zeitslot
+                veranstaltung_zu_raum_zeit.append((veranstaltungs_id, raum, zeitslot))
+                zeitslots.remove(zeitslot)  # Entferne den zugewiesenen Zeitslot
+                unternehmen_zuletzt_im_raum[unternehmen] = raum  # Aktualisiere den zuletzt zugewiesenen Raum für das Unternehmen
+                break
+            if unternehmen in unternehmen_zuletzt_im_raum:
+                break  # Beende, wenn eine Zuordnung erfolgt ist
 
-# Schritt 3: Schüler den Veranstaltungen zuweisen (Unverändert)
+    return pd.DataFrame(veranstaltung_zu_raum_zeit, columns=['VeranstaltungsNr', 'Raum', 'Zeitslot'])
+
+# Anwendung der Zuordnungsfunktion
+veranstaltung_zeitslot_raum_df = zuordnung_veranstaltungen_zu_raeumen(veranstaltungsliste_df, raumliste_df)
+
+
+
+# Schritt 3: Schüler den Veranstaltungen zuweisen, unter Berücksichtigung der Anforderung für 4 Veranstaltungen
 aktuelle_teilnehmerzahl = defaultdict(int)
 schueler_zuweisung = defaultdict(list)
+
+# Zuweisung basierend auf Schülerwahlen
 for index, schueler in schuelerwahlen_df.iterrows():
-    zugewiesen = False
-    for wahl in ['Wahl 1', 'Wahl 2', 'Wahl 3']:
-        if pd.isna(schueler[wahl]):
+    zugewiesene_events = 0
+    for wahl in ['Wahl 1', 'Wahl 2', 'Wahl 3', 'Wahl 4', 'Wahl 5']:
+        if pd.isna(schueler[wahl]) or zugewiesene_events >= 4:  # Änderung zu 4 Veranstaltungen
             continue
         veranstaltungs_nr = int(schueler[wahl])
         if aktuelle_teilnehmerzahl[veranstaltungs_nr] < veranstaltungsliste_df.loc[veranstaltungsliste_df['Nr. '] == veranstaltungs_nr, 'Max. Teilnehmer'].values[0]:
+            # Zuweisung der Veranstaltung
             schueler_zuweisung[schueler['Name']].append(veranstaltungs_nr)
             aktuelle_teilnehmerzahl[veranstaltungs_nr] += 1
-            zugewiesen = True
-            break
+            zugewiesene_events += 1
+            if zugewiesene_events >= 4:  # Stoppe nach Zuweisung von 4 Veranstaltungen
+                break
+
+# Konvertierung der Zuweisungen in einen DataFrame
 schueler_zuweisung_df = pd.DataFrame([(k, v) for k, v in schueler_zuweisung.items()], columns=['Schüler', 'Zugewiesene VeranstaltungsNrn'])
 print(schueler_zuweisung_df.head())
 
+
+
+
+
+
+
 # Schritt 4: Exportieren der Daten in Excel-Dateien
+
+# Basispfad für den Export festlegen
+export_basispfad = 'C:/Users/SE/Desktop/Laufzettel/'
 
 # 1. Anwesenheitslisten je Veranstaltung
 anwesenheitslisten_path = 'C://Users//SE//Schulprojekt//DPA//Data//Export//EXPORT_BOT5_Anwesenheitslisten.xlsx'
@@ -83,21 +112,39 @@ anwesenheitslisten_df.to_excel(anwesenheitslisten_path, index=False)
 
 # 2. Raum- und Zeitplan
 raum_zeitplan_path = 'C://Users//SE//Schulprojekt//DPA//Data//Export//EXPORT_BOT3_Raum_und_Zeitplan.xlsx'
-raum_zeitplan_df = veranstaltung_zeitslot_raum.merge(veranstaltungsliste_df, left_on='VeranstaltungsNr', right_on='Nr. ', how='left')[['VeranstaltungsNr', 'Raum', 'Zeitslot', 'Unternehmen', 'Fachrichtung']]
+raum_zeitplan_df = veranstaltung_zeitslot_raum_df.merge(veranstaltungsliste_df, left_on='VeranstaltungsNr', right_on='Nr. ', how='left')[['VeranstaltungsNr', 'Raum', 'Zeitslot', 'Unternehmen', 'Fachrichtung']]
 raum_zeitplan_df.to_excel(raum_zeitplan_path, index=False)
 
 # 3. Laufzettel für Schüler
-laufzettel_path = 'C://Users//SE//Schulprojekt//DPA//Data//Export//EXPORT_BOT6_Laufzettel.xlsx'
-laufzettel_list = []
-for schueler, veranstaltungsnummern in schueler_zuweisung.items():
-    for veranstaltungsnummer in veranstaltungsnummern:
-        raum_und_zeit = raum_zeitplan_df[raum_zeitplan_df['VeranstaltungsNr'] == veranstaltungsnummer][['Raum', 'Zeitslot']].values[0]
-        laufzettel_list.append([schueler, veranstaltungsnummer, raum_und_zeit[0], raum_und_zeit[1]])
-laufzettel_df = pd.DataFrame(laufzettel_list, columns=['Schüler', 'VeranstaltungsNr', 'Raum', 'Zeitslot'])
-laufzettel_df.to_excel(laufzettel_path, index=False)
+# Durchlaufe alle Schülerzuweisungen
+for schueler, veranstaltungs_nrn in schueler_zuweisung.items():
+    # Hole die Klasseninformation des Schülers
+    klasse = schuelerwahlen_df.loc[schuelerwahlen_df['Name'] == schueler, 'Klasse'].values[0]
+    # Erstelle den Pfad basierend auf der Klasse
+    klassenpfad = os.path.join(export_basispfad, klasse)
+    # Erstelle den Ordner, wenn er nicht existiert
+    os.makedirs(klassenpfad, exist_ok=True)
+    
+    # Hole und sortiere Veranstaltungsdetails wie zuvor
+    veranstaltungen_details = veranstaltung_zeitslot_raum_df[veranstaltung_zeitslot_raum_df['VeranstaltungsNr'].isin(veranstaltungs_nrn)]
+    veranstaltungen_details = veranstaltungen_details.merge(veranstaltungsliste_df, left_on='VeranstaltungsNr', right_on='Nr. ', how='left').sort_values(by=['Zeitslot'])
+
+
+    # Erstelle Laufzettel für den aktuellen Schüler
+    laufzettel = []
+    for _, row in veranstaltungen_details.iterrows():
+        laufzettel.append([schueler, row['VeranstaltungsNr'], row['Raum'], row['Zeitslot'], row['Unternehmen'], row['Fachrichtung']])
+    
+    # Konvertiere in DataFrame
+    laufzettel_df = pd.DataFrame(laufzettel, columns=['Schüler', 'VeranstaltungsNr', 'Raum', 'Zeitslot', 'Unternehmen', 'Fachrichtung'])
+    
+    # Exportiere Laufzettel als Excel-Datei in den klassenspezifischen Ordner
+    laufzettel_pfad = os.path.join(klassenpfad, f"Laufzettel_{schueler.replace(' ', '_')}.xlsx")
+    laufzettel_df.to_excel(laufzettel_pfad, index=False)
+
+print(f"Laufzettel für Schüler wurden in den klassenspezifischen Ordnern gespeichert.")
 
 
 # Ausgabe der Pfade zu den erstellten Excel-Dateien
 print(f"Anwesenheitslisten gespeichert unter: {anwesenheitslisten_path}")
 print(f"Raum- und Zeitplan gespeichert unter: {raum_zeitplan_path}")
-print(f"Laufzettel für Schüler gespeichert unter: {laufzettel_path}")
