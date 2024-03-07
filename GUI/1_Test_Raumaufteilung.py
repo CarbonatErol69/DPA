@@ -3,9 +3,10 @@ import numpy as np
 import pandas as pd
 
 # Dateipfade
-schueler_wahlen_path = 'C://Users//SE//Schulprojekt//DPA//Data//IMPORT_BOT2_Schülerwahlen.xlsx'
-raumliste_path = 'C://Users//SE//Schulprojekt//DPA//Data//IMPORT_BOT0_Raumliste.xlsx'
-veranstaltungsliste_path = 'C://Users//SE//Schulprojekt//DPA//Data//IMPORT_BOT1_Veranstaltungsliste.xlsx'
+
+schueler_wahlen_path = 'C://Users//SE//Desktop//IMPORT_BOT2_wahl.xlsx'
+raumliste_path = 'C://Users//SE//Desktop//IMPORT_BOT0_Raumliste.xlsx'
+veranstaltungsliste_path = 'C://Users//SE//Desktop//IMPORT_BOT1_Veranstaltungsliste.xlsx'
 
 # Einlesen der Dateien in Dataframes
 schuelerwahlen_df = pd.read_excel(schueler_wahlen_path)
