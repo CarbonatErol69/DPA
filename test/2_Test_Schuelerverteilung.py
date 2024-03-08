@@ -2,72 +2,46 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 import os
+import random
 
-
+# Daten einlesen
 # Dateipfade
 basisimportpfad = 'C://Users//SE//Schulprojekt//DPA//data//'
 schueler_wahlen_path = basisimportpfad + 'IMPORT_BOT2_Wahl.xlsx'
 raumliste_path = basisimportpfad +'IMPORT_BOT0_Raumliste.xlsx'
 veranstaltungsliste_path =  basisimportpfad + 'IMPORT_BOT1_Veranstaltungsliste.xlsx'
 
-
 # Einlesen der Dateien in Dataframes
 schuelerwahlen_df = pd.read_excel(schueler_wahlen_path)
 raumliste_df = pd.read_excel(raumliste_path)
 veranstaltungsliste_df = pd.read_excel(veranstaltungsliste_path)
 
-klasse_filter = schuelerwahlen_df['Name'] == 'Schüler1'
-if klasse_filter.any():
-    klasse = schuelerwahlen_df.loc[klasse_filter, 'Klasse'].iloc[0]
-else:
-    print('No student found with the name "Schüler1"')
 
-print('Debugging: schuelerwahlen_df')
-print(schuelerwahlen_df.columns)
-print(schuelerwahlen_df.head())
+# Preprocessing
+# Define the convert_dict_to_df function
+def convert_dict_to_df(schueler_zuweisung):
+    schueler_zuweisung_list = [{'Schüler': k, 'Zugewiesene VeranstaltungsNrn': v} for k, v in schueler_zuweisung.items()]
+    return pd.DataFrame(schueler_zuweisung_list)
 
-
-if 'Wahl 6' not in schuelerwahlen_df.columns:
-    schuelerwahlen_df['Wahl 6'] = None  # Oder einen anderen angemessenen Standardwert
-
-
-# Extrahiere die ersten drei Wahlen
-first_three_choices = pd.concat([schuelerwahlen_df['Wahl 1'], schuelerwahlen_df['Wahl 2'], schuelerwahlen_df['Wahl 3']])
+# Extrahiere die ersten fünf Wahlen
+first_five_choices = pd.concat([
+    schuelerwahlen_df['Wahl 1'], schuelerwahlen_df['Wahl 2'], 
+    schuelerwahlen_df['Wahl 3'], schuelerwahlen_df['Wahl 4'], 
+    schuelerwahlen_df['Wahl 5']
+])
 # Zähle, wie oft jede Veranstaltung gewählt wurde
-event_counts = first_three_choices.value_counts()
+event_counts = first_five_choices.value_counts()
 
 # Füge eine neue Spalte für die Zählung der Events in 'veranstaltungsliste_df' hinzu
 veranstaltungsliste_df['Event Counts'] = veranstaltungsliste_df['Nr. '].map(event_counts).fillna(0)
 
 # Berechne 'Mindestanzahl Events' basierend auf 'Max. Teilnehmer' und 'Event Counts'
 veranstaltungsliste_df['Mindestanzahl Events'] = np.ceil(veranstaltungsliste_df['Event Counts'] / veranstaltungsliste_df['Max. Teilnehmer'])
+print(veranstaltungsliste_df.head)
 
 # Unmittelbar vor dem Zugriff auf 'Wahl 6'
 if 'Wahl 6' not in schuelerwahlen_df.columns:
     schuelerwahlen_df['Wahl 6'] = np.nan  # Füge 'Wahl 6' mit NaN-Werten hinzu
-
-
-schuelerwahlen_df = pd.DataFrame({
-    'Klasse': ['Klasse1', 'Klasse2'],
-    'Name': ['Schüler1', 'Schüler2'],
-    'Wahl 1': [1, 2],
-    'Wahl 2': [2, 3],
-    'Wahl 3': [1, 4],
-    'Wahl 4': [3, 1],
-    'Wahl 5': [4, 2],
-    'Wahl 6': [None, None]  # Stelle sicher, dass 'Wahl 6' existiert
-})
-
-
-
-
-veranstaltungsliste_df = pd.DataFrame({
-    'Nr. ': [1, 2, 3, 4],
-    'Unternehmen': ['Unternehmen1', 'Unternehmen2', 'Unternehmen1', 'Unternehmen2'],
-    'Fachrichtung': ['Fach1', 'Fach2', 'Fach3', 'Fach4'],
-    'Max. Teilnehmer': [20, 25, 20, 25],
-    'Frühester Zeitpunkt': ['A', 'B', 'C', 'D']
-})
 
 # Convert 'Frühester Zeitpunkt' to numeric values
 zeitpunkt_mapping = {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5}
@@ -79,7 +53,6 @@ veranstaltungsliste_df['Frühester Zeitpunkt Num'] = veranstaltungsliste_df['Fr�
 event_counts = pd.concat([schuelerwahlen_df['Wahl 1'], schuelerwahlen_df['Wahl 2'], schuelerwahlen_df['Wahl 3']]).value_counts()
 veranstaltungsliste_df['Event Counts'] = veranstaltungsliste_df['Nr. '].map(event_counts).fillna(0)
 veranstaltungsliste_df['Mindestanzahl Events'] = np.ceil(veranstaltungsliste_df['Event Counts'] / veranstaltungsliste_df['Max. Teilnehmer'])
-
 
 # Display the adjusted 'veranstaltungsliste_df' for verification
 veranstaltungsliste_df
@@ -126,46 +99,47 @@ def zuordnung_veranstaltungen_zu_raeumen(veranstaltungsliste_df, raumliste_df):
 veranstaltung_zeitslot_raum_df = zuordnung_veranstaltungen_zu_raeumen(veranstaltungsliste_df, raumliste_df)
 
 
-
 # Zuordnungsfunktion
-def assign_courses_to_students(schuelerwahlen_df, veranstaltungsliste_df):
+def assign_courses_to_students(schuelerwahlen_df, veranstaltungsliste_df, veranstaltung_zeitslot_raum_df):
     schueler_zuweisung = defaultdict(list)
+    # Copy the DataFrame to preserve the original
+    remaining_veranstaltungsliste_df = veranstaltungsliste_df.copy()
     for _, row in schuelerwahlen_df.iterrows():
         schueler_name = row['Name']
-        for wahl in ['Wahl 1', 'Wahl 2', 'Wahl 3', 'Wahl 4', 'Wahl 5', 'Wahl 6']:
-            wahl_nr = row[wahl]
-            if pd.notna(wahl_nr) and wahl_nr in veranstaltungsliste_df['Nr. '].values:
-                schueler_zuweisung[schueler_name].append(wahl_nr)
-    
+        wuensche = [row['Wahl 1'], row['Wahl 2'], row['Wahl 3'], row['Wahl 4'], row['Wahl 5'], row['Wahl 6']]
+        # Shuffle the wishes to randomize selection
+        random.shuffle(wuensche)
+        for wahl_nr in wuensche:
+            if pd.notna(wahl_nr) and wahl_nr in remaining_veranstaltungsliste_df['Nr. '].values:
+                # Check if there are available slots for the event
+                slots_available = veranstaltung_zeitslot_raum_df[veranstaltung_zeitslot_raum_df['VeranstaltungsNr'] == wahl_nr]
+                if not slots_available.empty:
+                    # Assign the student to the event
+                    schueler_zuweisung[schueler_name].append(wahl_nr)
+                    # Remove the assigned event from remaining events
+                    remaining_veranstaltungsliste_df = remaining_veranstaltungsliste_df[remaining_veranstaltungsliste_df['Nr. '] != wahl_nr]
+    # If there are remaining events, assign students randomly
+    if not remaining_veranstaltungsliste_df.empty:
+        for _, row in schuelerwahlen_df.iterrows():
+            schueler_name = row['Name']
+            for _ in range(6 - len(schueler_zuweisung[schueler_name])):
+                # Randomly select an available event
+                random_event = random.choice(remaining_veranstaltungsliste_df['Nr. '].values)
+                # Assign the student to the event
+                schueler_zuweisung[schueler_name].append(random_event)
+                # Remove the assigned event from remaining events
+                remaining_veranstaltungsliste_df = remaining_veranstaltungsliste_df[remaining_veranstaltungsliste_df['Nr. '] != random_event]
+                if remaining_veranstaltungsliste_df.empty:
+                    break
+            if remaining_veranstaltungsliste_df.empty:
+                break
     return schueler_zuweisung
 
-# Verwende die Funktion, um Schülern Veranstaltungen zuzuweisen
-schueler_zuweisung = assign_courses_to_students(schuelerwahlen_df, veranstaltungsliste_df)
-schueler_zuweisung_df = pd.DataFrame(list(schueler_zuweisung.items()), columns=['Schüler', 'Zugewiesene VeranstaltungsNrn'])
+# Usage example
+schueler_zuweisung = assign_courses_to_students(schuelerwahlen_df, veranstaltungsliste_df, veranstaltung_zeitslot_raum_df)
+schueler_zuweisung_df = convert_dict_to_df(schueler_zuweisung)
 print(schueler_zuweisung_df)
 
-
-# def assign_courses_to_students(schuelerwahlen_df, veranstaltungsliste_df):
-#     schueler_zuweisung = []
-#     for index, schueler in schuelerwahlen_df['Name'].items():
-#         klasse = schuelerwahlen_df.loc[schuelerwahlen_df['Name'] == schueler, 'Klasse'].iloc[0]
-#         wahl1 = schuelerwahlen_df.loc[schuelerwahlen_df['Name'] == schueler, 'Wahl 1'].iloc[0]
-#         wahl2 = schuelerwahlen_df.loc[schuelerwahlen_df['Name'] == schueler, 'Wahl 2'].iloc[0]
-#         wahl3 = schuelerwahlen_df.loc[schuelerwahlen_df['Name'] == schueler, 'Wahl 3'].iloc[0]
-#         wahl4 = schuelerwahlen_df.loc[schuelerwahlen_df['Name'] == schueler, 'Wahl 4'].iloc[0]
-#         wahl5 = schuelerwahlen_df.loc[schuelerwahlen_df['Name'] == schueler, 'Wahl 5'].iloc[0]
-#         wahl6 = schuelerwahlen_df.loc[schuelerwahlen_df['Name'] == schueler, 'Wahl 6'].iloc[0]
-#         wahl_liste = [wahl1, wahl2, wahl3, wahl4, wahl5, wahl6]
-#         wahl_liste = [wahl for wahl in wahl_liste if wahl != 0]
-#         veranstaltungen = veranstaltungsliste_df[veranstaltungsliste_df['Fachrichtung'].isin(wahl_liste)]
-#         veranstaltungen = veranstaltungen.reset_index(drop=True)
-#         veranstaltungen_zuweisung = assign_courses_to_classes(veranstaltungen, klasse)
-#         schueler_zuweisung.append(veranstaltungen_zuweisung)
-#     return schueler_zuweisung
-
-# schueler_zuweisung = assign_courses_to_students(schuelerwahlen_df, veranstaltungsliste_df)
-# schueler_zuweisung_df = pd.DataFrame([(k, v) for k, v in schueler_zuweisung.items()], columns=['Schüler', 'Zugewiesene VeranstaltungsNrn'])
-# print(schueler_zuweisung_df.head())
 
 # Konvertieren Sie das defaultdict zu einem DataFrame
 def convert_dict_to_df(schueler_zuweisung):
@@ -176,7 +150,7 @@ schueler_zuweisung_df = convert_dict_to_df(schueler_zuweisung)
 
 # Überarbeitete Funktion export_data
 def export_data(schueler_zuweisung_df, veranstaltung_zeitslot_raum_df, schuelerwahlen_df, veranstaltungsliste_df, raum_zeitplan_path, anwesenheitslisten_path, export_basispfad):
-    # Stellen Sie sicher, dass schueler_zuweisung_df tatsächlich ein DataFrame ist
+    # Sicher stellen, dass schueler_zuweisung_df ein DataFrame ist
     print('Debugging: schueler_zuweisung_df:')
     print(schueler_zuweisung_df.head())
     if isinstance(schueler_zuweisung_df, pd.DataFrame):
@@ -217,8 +191,12 @@ def export_data(schueler_zuweisung_df, veranstaltung_zeitslot_raum_df, schuelerw
         laufzettel_df.to_excel(laufzettel_pfad, index=False)
 
 # Anwendung der Funktionen
+# Generieren Sie veranstaltung_zeitslot_raum_df
 veranstaltung_zeitslot_raum_df = zuordnung_veranstaltungen_zu_raeumen(veranstaltungsliste_df, raumliste_df)
-schueler_zuweisung_df = assign_courses_to_students(schuelerwahlen_df, veranstaltungsliste_df)
+
+# Weisen Sie Kurse den Schülern zu
+schueler_zuweisung_df = assign_courses_to_students(schuelerwahlen_df, veranstaltungsliste_df, veranstaltung_zeitslot_raum_df)
+
 
 # Basispfad für den Export festlegen
 export_basispfad = 'C://Users//SE//Desktop//Laufzettel//'
