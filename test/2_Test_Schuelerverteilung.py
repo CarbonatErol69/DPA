@@ -4,7 +4,7 @@ import pandas as pd
 import os
 
 # Dateipfade
-basisimportpfad = 'C://Users//Alex-//Desktop//Schulprojekt//DPA//data//'
+basisimportpfad = 'C://Users//SE//Schulprojekt//DPA//data//'
 schueler_wahlen_path = basisimportpfad + 'IMPORT_BOT2_Wahl.xlsx'
 raumliste_path = basisimportpfad +'IMPORT_BOT0_Raumliste.xlsx'
 veranstaltungsliste_path =  basisimportpfad + 'IMPORT_BOT1_Veranstaltungsliste.xlsx'
@@ -13,6 +13,13 @@ veranstaltungsliste_path =  basisimportpfad + 'IMPORT_BOT1_Veranstaltungsliste.x
 schuelerwahlen_df = pd.read_excel(schueler_wahlen_path)
 raumliste_df = pd.read_excel(raumliste_path)
 veranstaltungsliste_df = pd.read_excel(veranstaltungsliste_path)
+
+klasse = schuelerwahlen_df.loc[schuelerwahlen_df['Name'] == schueler, 'Klasse'].iloc[0]
+
+print('Debugging: schuelerwahlen_df')
+print(schuelerwahlen_df.columns)
+print(schuelerwahlen_df.head())
+
 
 # Extrahiere die ersten drei Wahlen
 first_three_choices = pd.concat([schuelerwahlen_df['Wahl 1'], schuelerwahlen_df['Wahl 2'], schuelerwahlen_df['Wahl 3']])
@@ -190,7 +197,7 @@ veranstaltung_zeitslot_raum_df = zuordnung_veranstaltungen_zu_raeumen(veranstalt
 schueler_zuweisung_df = assign_courses_to_students(schuelerwahlen_df, veranstaltungsliste_df)
 
 # Basispfad für den Export festlegen
-export_basispfad = 'C://Users//Alex-//Desktop//Laufzettel//'
+export_basispfad = 'C://Users//SE//Desktop//Laufzettel//'
 anwesenheitslisten_path = export_basispfad +'EXPORT_BOT5_Anwesenheitslisten.xlsx'
 raum_zeitplan_path = export_basispfad + 'EXPORT_BOT3_Raum_und_Zeitplan.xlsx'
 
