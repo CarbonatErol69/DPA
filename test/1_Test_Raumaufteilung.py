@@ -2,6 +2,7 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 import os
+import xlsxwriter
 
 # Dateipfade
 schueler_wahlen_path = 'C://Users//SE//Desktop//IMPORT_BOT2_Wahl.xlsx'
@@ -66,7 +67,6 @@ def zuordnung_veranstaltungen_zu_raeumen(veranstaltungsliste_df, raumliste_df):
 veranstaltung_zeitslot_raum_df = zuordnung_veranstaltungen_zu_raeumen(veranstaltungsliste_df, raumliste_df)
 
 
-
 # Schritt 3: Schüler den Veranstaltungen zuweisen, unter Berücksichtigung der Anforderung für 4 Veranstaltungen
 aktuelle_teilnehmerzahl = defaultdict(int)
 schueler_zuweisung = defaultdict(list)
@@ -91,11 +91,6 @@ schueler_zuweisung_df = pd.DataFrame([(k, v) for k, v in schueler_zuweisung.item
 print(schueler_zuweisung_df.head())
 
 
-
-
-
-
-
 # Schritt 4: Exportieren der Daten in Excel-Dateien
 
 # Basispfad für den Export festlegen
@@ -110,10 +105,51 @@ for schueler, veranstaltungsnummern in schueler_zuweisung.items():
 anwesenheitslisten_df = pd.DataFrame([(veranstaltungsnummer, ", ".join(schueler)) for veranstaltungsnummer, schueler in anwesenheitslisten.items()], columns=['VeranstaltungsNr', 'Teilnehmende Schüler'])
 anwesenheitslisten_df.to_excel(anwesenheitslisten_path, index=False)
 
+
+
 # 2. Raum- und Zeitplan
 raum_zeitplan_path = 'C://Users//SE//Schulprojekt//DPA//Data//Export//EXPORT_BOT3_Raum_und_Zeitplan.xlsx'
-raum_zeitplan_df = veranstaltung_zeitslot_raum_df.merge(veranstaltungsliste_df, left_on='VeranstaltungsNr', right_on='Nr. ', how='left')[['VeranstaltungsNr', 'Raum', 'Zeitslot', 'Unternehmen', 'Fachrichtung']]
-raum_zeitplan_df.to_excel(raum_zeitplan_path, index=False)
+# Bereiten Sie Ihre Daten vor (dieser Schritt ist hypothetisch und basiert auf Ihren vorherigen Beschreibungen)
+# Angenommen, veranstaltung_zeitslot_raum_df enthält bereits die Zuordnungen von Veranstaltungen zu Räumen und Zeitslots
+
+
+veranstaltung_zeitslot_raum_df.head()
+print(veranstaltung_zeitslot_raum_df.columns)
+print(veranstaltungsliste_df.columns)
+
+
+
+# Merge zuerst veranstaltung_zeitslot_raum_df mit veranstaltungsliste_df, um 'Unternehmen' und 'Fachrichtung' zu erhalten
+veranstaltung_zeitslot_raum_df = pd.merge(veranstaltung_zeitslot_raum_df,
+                                          veranstaltungsliste_df[['Nr. ', 'Unternehmen', 'Fachrichtung']],
+                                          left_on='VeranstaltungsNr',
+                                          right_on='Nr. ',
+                                          how='left')
+
+# Entferne die unnötige Spalte 'Nr.' aus dem Merge-Ergebnis
+veranstaltung_zeitslot_raum_df.drop(columns=['Nr. '], inplace=True)
+
+# Nach dem Merge, erstelle die kombinierte Spalte 'Unternehmen_Fachrichtung'
+veranstaltung_zeitslot_raum_df['Unternehmen_Fachrichtung'] = veranstaltung_zeitslot_raum_df['Unternehmen'] + " - " + veranstaltung_zeitslot_raum_df['Fachrichtung']
+
+# Erstelle Pivot-Tabelle
+pivot_df = pd.pivot_table(veranstaltung_zeitslot_raum_df, values='Raum', index='Unternehmen_Fachrichtung', columns='Zeitslot', aggfunc=lambda x: ' '.join(x), fill_value='')
+
+# Exportieren mit xlsxwriter
+raum_zeitplan_path = os.path.join(export_basispfad, 'EXPORT_BOT3_Raum_und_Zeitplan.xlsx')
+with pd.ExcelWriter(raum_zeitplan_path, engine='xlsxwriter') as writer:
+    pivot_df.to_excel(writer, sheet_name='Raum_und_Zeitplan')
+    workbook = writer.book
+    worksheet = writer.sheets['Raum_und_Zeitplan']
+
+    # Formatierungen anwenden
+    header_format = workbook.add_format({'bold': True, 'text_wrap': True, 'valign': 'top', 'fg_color': '#DDEBF7', 'border': 1})
+    worksheet.set_row(0, None, header_format)
+    worksheet.set_column('A:A', 40)
+    worksheet.set_column('B:F', 10)
+
+print(f"Raum/Zeitplan wurde erfolgreich erstellt: {raum_zeitplan_path}")
+
 
 # 3. Laufzettel für Schüler
 # Durchlaufe alle Schülerzuweisungen
