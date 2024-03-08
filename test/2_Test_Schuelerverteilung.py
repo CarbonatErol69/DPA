@@ -11,6 +11,11 @@ schueler_wahlen_path = basisimportpfad + 'IMPORT_BOT2_Wahl.xlsx'
 raumliste_path = basisimportpfad +'IMPORT_BOT0_Raumliste.xlsx'
 veranstaltungsliste_path =  basisimportpfad + 'IMPORT_BOT1_Veranstaltungsliste.xlsx'
 
+# Basispfad für den Export festlegen
+export_basispfad = 'C://Users//SE//Desktop//Laufzettel//'
+anwesenheitslisten_path = export_basispfad +'EXPORT_BOT5_Anwesenheitslisten.xlsx'
+raum_zeitplan_path = export_basispfad + 'EXPORT_BOT3_Raum_und_Zeitplan.xlsx'
+
 # Einlesen der Dateien in Dataframes
 schuelerwahlen_df = pd.read_excel(schueler_wahlen_path)
 raumliste_df = pd.read_excel(raumliste_path)
@@ -31,6 +36,17 @@ first_five_choices = pd.concat([
 ])
 # Zähle, wie oft jede Veranstaltung gewählt wurde
 event_counts = first_five_choices.value_counts()
+
+# Überprüfe die Spaltennamen
+print(schuelerwahlen_df.columns)
+
+# Falls der Spaltenname 'Schüler' nicht vorhanden ist, korrigiere ihn
+if 'Schüler' not in schuelerwahlen_df.columns:
+    # Annahme: Vorname und Nachname sind in separaten Spalten 'Vorname' und 'Nachname'
+    schuelerwahlen_df['Schüler'] = schuelerwahlen_df['Vorname'] + ' ' + schuelerwahlen_df['Name']
+
+# Überprüfe die aktualisierten Spaltennamen
+print(schuelerwahlen_df.columns)
 
 # Füge eine neue Spalte für die Zählung der Events in 'veranstaltungsliste_df' hinzu
 veranstaltungsliste_df['Event Counts'] = veranstaltungsliste_df['Nr. '].map(event_counts).fillna(0)
@@ -148,8 +164,23 @@ def convert_dict_to_df(schueler_zuweisung):
 
 schueler_zuweisung_df = convert_dict_to_df(schueler_zuweisung)
 
+
+def export_klassenweise_laufzettel(schueler_zuweisung_df, veranstaltungsliste_df, schuelerwahlen_df, export_basispfad):
+  for klasse in schuelerwahlen_df['Klasse'].unique():
+    schueler_der_klasse = schuelerwahlen_df[schuelerwahlen_df['Klasse'] == klasse]
+    zugewiesene_veranstaltungen = schueler_zuweisung_df.merge(schueler_der_klasse, on='Schüler')
+    laufzettel_df = zugewiesene_veranstaltungen.merge(veranstaltungsliste_df, left_on='VeranstaltungsNr', right_on='Nr. ', how='left').sort_values(by=['Zeitslot'])
+    laufzettel_pfad = os.path.join(export_basispfad, klasse, "Laufzettel_alle.xlsx")
+    laufzettel_df.to_excel(laufzettel_pfad, index=False)
+
+
+
 # Überarbeitete Funktion export_data
 def export_data(schueler_zuweisung_df, veranstaltung_zeitslot_raum_df, schuelerwahlen_df, veranstaltungsliste_df, raum_zeitplan_path, anwesenheitslisten_path, export_basispfad):
+
+    export_klassenweise_laufzettel(schueler_zuweisung_df, veranstaltungsliste_df, schuelerwahlen_df, export_basispfad)
+
+
     # Sicher stellen, dass schueler_zuweisung_df ein DataFrame ist
     print('Debugging: schueler_zuweisung_df:')
     print(schueler_zuweisung_df.head())
@@ -163,7 +194,7 @@ def export_data(schueler_zuweisung_df, veranstaltung_zeitslot_raum_df, schuelerw
                 anwesenheitslisten[veranstaltungsnummer].append(schueler)
         pass
     else:
-        raise ValueError("schueler_zuweisung_df ist kein pandas DataFrame. Bitte überprüfen Sie die Konvertierung.")
+        raise ValueError("schueler_zuweisung_df ist kein pandas DataFrame. Bitte überprüfe die Konvertierung.")
 
     anwesenheitslisten_df = pd.DataFrame([(veranstaltungsnummer, ", ".join(schueler)) for veranstaltungsnummer, schueler in anwesenheitslisten.items()], columns=['VeranstaltungsNr', 'Teilnehmende Schüler'])
     anwesenheitslisten_df.to_excel(anwesenheitslisten_path, index=False)
@@ -196,12 +227,6 @@ veranstaltung_zeitslot_raum_df = zuordnung_veranstaltungen_zu_raeumen(veranstalt
 
 # Weisen Sie Kurse den Schülern zu
 schueler_zuweisung_df = assign_courses_to_students(schuelerwahlen_df, veranstaltungsliste_df, veranstaltung_zeitslot_raum_df)
-
-
-# Basispfad für den Export festlegen
-export_basispfad = 'C://Users//SE//Desktop//Laufzettel//'
-anwesenheitslisten_path = export_basispfad +'EXPORT_BOT5_Anwesenheitslisten.xlsx'
-raum_zeitplan_path = export_basispfad + 'EXPORT_BOT3_Raum_und_Zeitplan.xlsx'
 
 schueler_zuweisung_df = convert_dict_to_df(schueler_zuweisung)
 
