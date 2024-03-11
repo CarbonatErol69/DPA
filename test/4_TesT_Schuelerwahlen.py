@@ -58,7 +58,7 @@ def calculate_min_events(schuelerwahlen_df, veranstaltungsliste_df):
         min_events_per_unternehmen[unternehmen] = max(1, min_events)  # Stelle sicher, dass mindestens eine Veranstaltung angeboten wird
 
     # Zuweisung der Mindestanzahl von Veranstaltungen pro Veranstaltung basierend auf dem Unternehmen
-    veranstaltungsliste_df['Mindestanzahl Events'] = veranstaltungsliste_df.apply(lambda row: min_events_per_unternehmen[row['Unternehmen']], axis=1)
+    veranstaltungsliste_df['Mindestanzahl Events'] = veranstaltungsliste_df['Unternehmen'].map(min_events_per_unternehmen)
 
     return veranstaltungsliste_df
 
@@ -115,75 +115,64 @@ def assign_rooms_for_entire_day(veranstaltungsliste_df, raumliste_df):
     raum_zeitslot_df = pd.DataFrame(raum_zuweisung)
     return raum_zeitslot_df
 
-def assign_students_to_events(schuelerwahlen_df, veranstaltungsliste_df, raum_zeitslot_df):
-    schueler_zuweisungen = defaultdict(list)  # SchülerID -> Liste von Veranstaltungs-IDs und Zeitslots
-    veranstaltungs_besetzungen = defaultdict(lambda: defaultdict(int))  # Veranstaltungs-ID -> Zeitslot -> Anzahl Schüler
-    verfuegbare_zeitslots_pro_veranstaltung = raum_zeitslot_df.groupby('Veranstaltung')['Zeitslot'].apply(set).to_dict()
+def assign_students_to_empty_slots(schuelerwahlen_df, veranstaltungsliste_df, raum_zeitslot_df, schueler_zuweisungen=None):
+    if schueler_zuweisungen is None:
+        schueler_zuweisungen = defaultdict(list)
+    
+    verfuegbare_zeitslots_pro_fachrichtung = raum_zeitslot_df.groupby('Fachrichtung')['Zeitslot'].apply(set).to_dict()
 
-    def kann_zuweisen(schueler_id, veranstaltung, zeitslot):
-        if zeitslot in [slot for _, slot in schueler_zuweisungen[schueler_id]]:
+    def kann_zuweisen(schueler_id, fachrichtung, zeitslot):
+        if zeitslot in [assignment['Zeitslot'] for assignment in schueler_zuweisungen[schueler_id]]:
             return False  # Der Schüler hat bereits eine Veranstaltung in diesem Zeitslot
-        if any(veranstaltungs_besetzungen[assigned_event][(assigned_slot // 5) * 5 + zeitslot] > 0 for assigned_event, assigned_slot in schueler_zuweisungen[schueler_id]):
-            return False  # Der Schüler hat bereits eine Veranstaltung desselben Typs am selben Tag
-        max_kapazitaet = veranstaltungsliste_df.loc[veranstaltungsliste_df['Nr. '] == veranstaltung, 'Max. Teilnehmer'].iloc[0]
-        if veranstaltungs_besetzungen[veranstaltung][zeitslot] >= max_kapazitaet:
-            return False  # Die maximale Kapazität der Veranstaltung ist erreicht
+        if any(fachrichtung in assignment['Fachrichtung'] for assignment in schueler_zuweisungen[schueler_id]):
+            return False  # Der Schüler hat bereits eine Veranstaltung derselben Fachrichtung am selben Tag
         return True
 
-    def sort_events_by_demand(schueler_id, wahlen):
-        # Filtere ungültige Wahlnummern heraus
-        gueltige_wahlen = [wahl_num for wahl_num in wahlen if pd.notna(schueler[f'Wahl {wahl_num}']) and 1 <= wahl_num <= 6]
-
-        # Konvertiere die Werte in Ganzzahlen, um sicherzustellen, dass sie als Schlüssel im gewichtung-Dictionary verwendet werden können
-        gueltige_wahlen_int = [int(w) for w in gueltige_wahlen]
-
-        # Sortiere die gültigen Wahlen basierend auf der Nachfrage (gewichtete Anzahl der Schüler, die diese Wahl gewählt haben)
-        gewichtung = {1: 6, 2: 5, 3: 4, 4: 3, 5: 2, 6: 1}
-        return sorted(gueltige_wahlen_int, key=lambda w: gewichtung[w], reverse=True)
-
     for _, schueler in schuelerwahlen_df.iterrows():
-        schueler_id = schueler['SchuelerID']  # Geändert von 'Name' zu 'SchuelerID'
-        wahlen = [wahl_num for wahl_num in range(1, 7) if pd.notna(schueler[f'Wahl {wahl_num}'])]
+        schueler_id = schueler['SchuelerID']
+        leere_wahlen = [wahl_num for wahl_num in range(1, 7) if pd.isna(schueler[f'Wahl {wahl_num}'])]
 
-        if not wahlen:
-            continue  # Der Schüler hat keine gültigen Wahlen getroffen
+        if not leere_wahlen:
+            continue  # Der Schüler hat keine leeren Wahlen
 
-        # Sortiere die Wahlen basierend auf der Nachfrage (gewichtete Anzahl der Schüler, die diese Wahl gewählt haben)
-        sorted_wahlen = sort_events_by_demand(schueler_id, wahlen)
+        random.shuffle(leere_wahlen)
 
-        for wahl in sorted_wahlen:
-            wahl_id = schueler[f'Wahl {wahl}']
-            if wahl_id not in verfuegbare_zeitslots_pro_veranstaltung:
-                continue  # Diese Veranstaltung hat keine verfügbaren Zeitslots
+        for leere_wahl in leere_wahlen:
+            leere_fachrichtung = veranstaltungsliste_df.loc[veranstaltungsliste_df['Nr. '] == leere_wahl, 'Fachrichtung'].iloc[0]
+            if leere_fachrichtung not in verfuegbare_zeitslots_pro_fachrichtung:
+                continue  # Diese Fachrichtung hat keine verfügbaren Zeitslots
 
-            verfuegbare_zeitslots = verfuegbare_zeitslots_pro_veranstaltung[wahl_id]
+            verfuegbare_zeitslots = verfuegbare_zeitslots_pro_fachrichtung[leere_fachrichtung]
             for zeitslot in verfuegbare_zeitslots:
-                if kann_zuweisen(schueler_id, wahl_id, zeitslot):
-                    schueler_zuweisungen[schueler_id].append((wahl_id, zeitslot))
-                    veranstaltungs_besetzungen[wahl_id][zeitslot] += 1
+                if kann_zuweisen(schueler_id, leere_fachrichtung, zeitslot):
+                    schueler_zuweisungen[schueler_id].append({'Wahl': leere_wahl, 'Fachrichtung': leere_fachrichtung, 'Zeitslot': zeitslot})
                     break
 
     return schueler_zuweisungen
 
 
-
-def complete_student_assignments(schueler_zuweisungen, kurs_besetzungen, veranstaltungsliste_df, raum_zeitslot_df, verfuegbare_slots_pro_veranstaltung):
+def complete_student_assignments(schueler_zuweisungen, veranstaltungsliste_df, raum_zeitslot_df):
+    verfuegbare_zeitslots_pro_fachrichtung = raum_zeitslot_df.groupby('Fachrichtung')['Zeitslot'].apply(set).to_dict()
     schueler_fehlende_slots = {schueler_id: 5 - len(zuweisungen) for schueler_id, zuweisungen in schueler_zuweisungen.items() if len(zuweisungen) < 5}
+
+    def kann_zuweisen(schueler_id, fachrichtung, zeitslot):
+        if zeitslot in [assignment['Zeitslot'] for assignment in schueler_zuweisungen[schueler_id]]:
+            return False  # Der Schüler hat bereits eine Veranstaltung in diesem Zeitslot
+        if any(fachrichtung in assignment['Fachrichtung'] for assignment in schueler_zuweisungen[schueler_id]):
+            return False  # Der Schüler hat bereits eine Veranstaltung derselben Fachrichtung am selben Tag
+        return True
 
     for schueler_id, fehlende_slots in schueler_fehlende_slots.items():
         for _ in range(fehlende_slots):
-            for _, veranstaltung in raum_zeitslot_df.iterrows():
-                veranstaltung_id = veranstaltung['Veranstaltung']
-                zeitslot = veranstaltung['Zeitslot']
-                if any(zeitslot == slot for _, slot in schueler_zuweisungen[schueler_id]):
-                    continue
-                max_kapazitaet = veranstaltungsliste_df.loc[veranstaltungsliste_df['Nr. '] == veranstaltung_id, 'Max. Teilnehmer'].values[0]
-                if kurs_besetzungen[veranstaltung_id][zeitslot] < max_kapazitaet:
-                    schueler_zuweisungen[schueler_id].append((veranstaltung_id, zeitslot))
-                    kurs_besetzungen[veranstaltung_id][zeitslot] += 1
-                    break
+            for fachrichtung, verfuegbare_zeitslots in verfuegbare_zeitslots_pro_fachrichtung.items():
+                for zeitslot in verfuegbare_zeitslots:
+                    if kann_zuweisen(schueler_id, fachrichtung, zeitslot):
+                        schueler_zuweisungen[schueler_id].append({'Wahl': None, 'Fachrichtung': fachrichtung, 'Zeitslot': zeitslot})
+                        break
 
     return schueler_zuweisungen
+
+
 
 def export_results(veranstaltungsliste_df, raumliste_df, schuelerwahlen_df, export_basispfad):
     # Exportieren der Daten in PDF-Dateien.
@@ -191,11 +180,14 @@ def export_results(veranstaltungsliste_df, raumliste_df, schuelerwahlen_df, expo
 
 # Exportiere Raum- und Zeitplan
 def export_anwesenheitslisten(schueler_zuweisungen, schuelerwahlen_df, export_basispfad):
-    # Erstelle eine Liste aus den Zuweisungen für den Export
+    print(schueler_zuweisungen)
+    print('Exportiere Anwesenheitslisten...')
+    print(schuelerwahlen_df)
     zuweisungs_liste = []
     for schueler_id, veranstaltungen in schueler_zuweisungen.items():
-        for veranstaltung, zeitslot in veranstaltungen:
-            zuweisungs_liste.append({'SchuelerID': schueler_id, 'Veranstaltung': veranstaltung, 'Zeitslot': zeitslot})
+        for zuweisung in veranstaltungen:
+            if zuweisung['Wahl'] is not None:
+                zuweisungs_liste.append({'SchuelerID': schueler_id, 'Veranstaltung': zuweisung['Wahl'], 'Zeitslot': zuweisung['Zeitslot']})
     zuweisungs_df = pd.DataFrame(zuweisungs_liste)
 
     # Erstelle eine Pivot-Tabelle für die Anwesenheitslisten
@@ -209,6 +201,8 @@ def export_anwesenheitslisten(schueler_zuweisungen, schuelerwahlen_df, export_ba
     for klasse in anwesenheitslisten_df.index.get_level_values(0).unique():
         klasse_df = anwesenheitslisten_df.xs(klasse, level='Klasse')
         klasse_df.to_excel(f'{export_basispfad}Anwesenheitsliste_{klasse}.xlsx')
+
+
 
 def erstelle_raumplan(veranstaltungsliste_df, raum_zeitslot_df):
     # Erstelle eine Zusammenführung von Veranstaltungs- und Raum-Zeitslot-Daten
@@ -229,13 +223,30 @@ def erstelle_raumplan(veranstaltungsliste_df, raum_zeitslot_df):
     return None
 
 
-
-
 schuelerwahlen_df, raumliste_df, veranstaltungsliste_df = load_data(schueler_wahlen_path, raumliste_path, veranstaltungsliste_path)
 veranstaltungsliste_df = prepare_veranstaltungsliste(veranstaltungsliste_df)
 veranstaltungsliste_df = calculate_min_events(schuelerwahlen_df, veranstaltungsliste_df)
 raum_zeitslot_df = assign_rooms_for_entire_day(veranstaltungsliste_df, raumliste_df)
-schueler_zuweisungen = assign_students_to_events(schuelerwahlen_df, veranstaltungsliste_df, raum_zeitslot_df)
+
+schueler_zuweisungen = defaultdict(list)
+schueler_zuweisungen = assign_students_to_empty_slots(schuelerwahlen_df, veranstaltungsliste_df, raum_zeitslot_df)
+
+
+# Iterativ vervollständige die Zuweisungen für Schüler mit leeren Wahlen und lege zusätzliche leere Slots an, bis möglichst alle Slots belegt sind
+while True:
+    # Kopiere die aktuelle Zuweisung für spätere Überprüfung
+    previous_assignment = schueler_zuweisungen.copy()
+
+    # Weise Schüler mit leeren Wahlen leere Slots zu
+    schueler_zuweisungen = assign_students_to_empty_slots(schuelerwahlen_df, veranstaltungsliste_df, raum_zeitslot_df, schueler_zuweisungen)
+
+    # Vervollständige die Zuweisungen für Schüler mit unzureichender Anzahl von Veranstaltungen
+    schueler_zuweisungen = complete_student_assignments(schueler_zuweisungen, veranstaltungsliste_df, raum_zeitslot_df)
+
+    # Überprüfe, ob sich die Zuweisungen geändert haben
+    if previous_assignment == schueler_zuweisungen:
+        break  # Wenn keine Änderungen mehr vorgenommen wurden, beenden Sie die Schleife
+
 export_results(veranstaltungsliste_df, raumliste_df, schuelerwahlen_df, raum_zeitplan_path)
 export_anwesenheitslisten(schueler_zuweisungen, schuelerwahlen_df, anwesenheitslisten_path)
 
