@@ -2,64 +2,73 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 import os
+import random
 
+# Daten einlesen
 # Dateipfade
-basisimportpfad = 'C://Users//Alex-//Desktop//Schulprojekt//DPA//data//'
+basisimportpfad = 'C://Users//SE//Schulprojekt//DPA//data//'
 schueler_wahlen_path = basisimportpfad + 'IMPORT_BOT2_Wahl.xlsx'
 raumliste_path = basisimportpfad +'IMPORT_BOT0_Raumliste.xlsx'
 veranstaltungsliste_path =  basisimportpfad + 'IMPORT_BOT1_Veranstaltungsliste.xlsx'
+
+# Basispfad für den Export festlegen
+export_basispfad = 'C://Users//SE//Desktop//Laufzettel//'
+anwesenheitslisten_path = export_basispfad +'EXPORT_BOT5_Anwesenheitslisten.xlsx'
+raum_zeitplan_path = export_basispfad + 'EXPORT_BOT3_Raum_und_Zeitplan.xlsx'
 
 # Einlesen der Dateien in Dataframes
 schuelerwahlen_df = pd.read_excel(schueler_wahlen_path)
 raumliste_df = pd.read_excel(raumliste_path)
 veranstaltungsliste_df = pd.read_excel(veranstaltungsliste_path)
 
-# Extrahiere die ersten drei Wahlen
-first_three_choices = pd.concat([schuelerwahlen_df['Wahl 1'], schuelerwahlen_df['Wahl 2'], schuelerwahlen_df['Wahl 3']])
+
+# Preprocessing
+# Define the convert_dict_to_df function
+def convert_dict_to_df(schueler_zuweisung):
+    schueler_zuweisung_list = [{'Schüler': k, 'Zugewiesene VeranstaltungsNrn': v} for k, v in schueler_zuweisung.items()]
+    return pd.DataFrame(schueler_zuweisung_list)
+
+# Extrahiere die ersten fünf Wahlen
+first_five_choices = pd.concat([
+    schuelerwahlen_df['Wahl 1'], schuelerwahlen_df['Wahl 2'], 
+    schuelerwahlen_df['Wahl 3'], schuelerwahlen_df['Wahl 4'], 
+    schuelerwahlen_df['Wahl 5']
+])
 # Zähle, wie oft jede Veranstaltung gewählt wurde
-event_counts = first_three_choices.value_counts()
+event_counts = first_five_choices.value_counts()
+
+# Überprüfe die Spaltennamen
+print(schuelerwahlen_df.columns)
+
+# Falls der Spaltenname 'Schüler' nicht vorhanden ist, korrigiere ihn
+if 'Schüler' not in schuelerwahlen_df.columns:
+    # Annahme: Vorname und Nachname sind in separaten Spalten 'Vorname' und 'Nachname'
+    schuelerwahlen_df['Schüler'] = schuelerwahlen_df['Vorname'] + ' ' + schuelerwahlen_df['Name']
+
+# Überprüfe die aktualisierten Spaltennamen
+print(schuelerwahlen_df.columns)
 
 # Füge eine neue Spalte für die Zählung der Events in 'veranstaltungsliste_df' hinzu
 veranstaltungsliste_df['Event Counts'] = veranstaltungsliste_df['Nr. '].map(event_counts).fillna(0)
 
 # Berechne 'Mindestanzahl Events' basierend auf 'Max. Teilnehmer' und 'Event Counts'
 veranstaltungsliste_df['Mindestanzahl Events'] = np.ceil(veranstaltungsliste_df['Event Counts'] / veranstaltungsliste_df['Max. Teilnehmer'])
+print(veranstaltungsliste_df.head)
 
-
-schuelerwahlen_df = pd.DataFrame({
-    'Name': ['Schüler1', 'Schüler2'],
-    'Wahl 1': [1, 2],
-    'Wahl 2': [2, 3],
-    'Wahl 3': [1, 4],
-    'Wahl 4': [3, 1],
-    'Wahl 5': [4, 2]
-})
-
-veranstaltungsliste_df = pd.DataFrame({
-    'Nr. ': [1, 2, 3, 4],
-    'Unternehmen': ['Unternehmen1', 'Unternehmen2', 'Unternehmen1', 'Unternehmen2'],
-    'Fachrichtung': ['Fach1', 'Fach2', 'Fach3', 'Fach4'],
-    'Max. Teilnehmer': [20, 25, 20, 25],
-    'Frühester Zeitpunkt': ['A', 'B', 'C', 'D']
-})
+# Unmittelbar vor dem Zugriff auf 'Wahl 6'
+if 'Wahl 6' not in schuelerwahlen_df.columns:
+    schuelerwahlen_df['Wahl 6'] = np.nan  # Füge 'Wahl 6' mit NaN-Werten hinzu
 
 # Convert 'Frühester Zeitpunkt' to numeric values
 zeitpunkt_mapping = {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5}
 veranstaltungsliste_df['Frühester Zeitpunkt Num'] = veranstaltungsliste_df['Frühester Zeitpunkt'].map(zeitpunkt_mapping)
 
 # Calculating 'Mindestanzahl Events'
-# Extracting first three choices
-first_three_choices = pd.concat([schuelerwahlen_df['Wahl 1'], schuelerwahlen_df['Wahl 2'], schuelerwahlen_df['Wahl 3']])
-# Counting how many times each event was chosen
-event_counts = first_three_choices.value_counts()
 
-# Adding a new column for event counts in 'veranstaltungsliste_df'
+# Berechnungen für Veranstaltungsliste
+event_counts = pd.concat([schuelerwahlen_df['Wahl 1'], schuelerwahlen_df['Wahl 2'], schuelerwahlen_df['Wahl 3']]).value_counts()
 veranstaltungsliste_df['Event Counts'] = veranstaltungsliste_df['Nr. '].map(event_counts).fillna(0)
-
-# Calculate 'Mindestanzahl Events' based on 'Max. Teilnehmer' and 'Event Counts'
 veranstaltungsliste_df['Mindestanzahl Events'] = np.ceil(veranstaltungsliste_df['Event Counts'] / veranstaltungsliste_df['Max. Teilnehmer'])
-
-# Assuming the rest of the provided functions are defined elsewhere in the notebook
 
 # Display the adjusted 'veranstaltungsliste_df' for verification
 veranstaltungsliste_df
@@ -105,36 +114,48 @@ def zuordnung_veranstaltungen_zu_raeumen(veranstaltungsliste_df, raumliste_df):
 
 veranstaltung_zeitslot_raum_df = zuordnung_veranstaltungen_zu_raeumen(veranstaltungsliste_df, raumliste_df)
 
-# Schritt 3: Schüler den Veranstaltungen zuweisen, unter Berücksichtigung der Anforderung für 4 Veranstaltungen
-def assign_courses_to_students(schuelerwahlen_df, veranstaltungsliste_df):
-    aktuelle_teilnehmerzahl = defaultdict(int)
+
+# Zuordnungsfunktion
+def assign_courses_to_students(schuelerwahlen_df, veranstaltungsliste_df, veranstaltung_zeitslot_raum_df):
     schueler_zuweisung = defaultdict(list)
-
-    for index, schueler in schuelerwahlen_df.iterrows():
-        zugewiesene_events = 0
-        for wahl in ['Wahl 1', 'Wahl 2', 'Wahl 3', 'Wahl 4', 'Wahl 5']:
-            if pd.isna(schueler[wahl]) or zugewiesene_events >= 4:  # Änderung zu 4 Veranstaltungen
-                continue
-            veranstaltungs_nr = int(schueler[wahl])
-            # Überprüfen, ob die gewählte Veranstaltung im Zeitplan eines anderen Schülers für denselben Zeitslot enthalten ist
-            zeitslot = veranstaltungsliste_df.loc[veranstaltungsliste_df['Nr. '] == veranstaltungs_nr, 'Frühester Zeitpunkt Num'].values[0]
-            if any(zeitslot == veranstaltungsliste_df.loc[veranstaltungsliste_df['Nr. '] == event_nr, 'Frühester Zeitpunkt Num'].values[0]
-                for event_nr in schueler_zuweisung[schueler['Name']]):
-                # Wenn ja, wähle die nächste Wahl aus
-                continue
-            if aktuelle_teilnehmerzahl[veranstaltungs_nr] < veranstaltungsliste_df.loc[veranstaltungsliste_df['Nr. '] == veranstaltungs_nr, 'Max. Teilnehmer'].values[0]:
-                # Zuweisung der Veranstaltung
-                schueler_zuweisung[schueler['Name']].append(veranstaltungs_nr)
-                aktuelle_teilnehmerzahl[veranstaltungs_nr] += 1
-                zugewiesene_events += 1
-                if zugewiesene_events >= 4:  # Stoppe nach Zuweisung von 4 Veranstaltungen
+    # Copy the DataFrame to preserve the original
+    remaining_veranstaltungsliste_df = veranstaltungsliste_df.copy()
+    for _, row in schuelerwahlen_df.iterrows():
+        schueler_name = row['Name']
+        wuensche = [row['Wahl 1'], row['Wahl 2'], row['Wahl 3'], row['Wahl 4'], row['Wahl 5'], row['Wahl 6']]
+        # Shuffle the wishes to randomize selection
+        random.shuffle(wuensche)
+        for wahl_nr in wuensche:
+            if pd.notna(wahl_nr) and wahl_nr in remaining_veranstaltungsliste_df['Nr. '].values:
+                # Check if there are available slots for the event
+                slots_available = veranstaltung_zeitslot_raum_df[veranstaltung_zeitslot_raum_df['VeranstaltungsNr'] == wahl_nr]
+                if not slots_available.empty:
+                    # Assign the student to the event
+                    schueler_zuweisung[schueler_name].append(wahl_nr)
+                    # Remove the assigned event from remaining events
+                    remaining_veranstaltungsliste_df = remaining_veranstaltungsliste_df[remaining_veranstaltungsliste_df['Nr. '] != wahl_nr]
+    # If there are remaining events, assign students randomly
+    if not remaining_veranstaltungsliste_df.empty:
+        for _, row in schuelerwahlen_df.iterrows():
+            schueler_name = row['Name']
+            for _ in range(6 - len(schueler_zuweisung[schueler_name])):
+                # Randomly select an available event
+                random_event = random.choice(remaining_veranstaltungsliste_df['Nr. '].values)
+                # Assign the student to the event
+                schueler_zuweisung[schueler_name].append(random_event)
+                # Remove the assigned event from remaining events
+                remaining_veranstaltungsliste_df = remaining_veranstaltungsliste_df[remaining_veranstaltungsliste_df['Nr. '] != random_event]
+                if remaining_veranstaltungsliste_df.empty:
                     break
-
+            if remaining_veranstaltungsliste_df.empty:
+                break
     return schueler_zuweisung
 
-schueler_zuweisung = assign_courses_to_students(schuelerwahlen_df, veranstaltungsliste_df)
-schueler_zuweisung_df = pd.DataFrame([(k, v) for k, v in schueler_zuweisung.items()], columns=['Schüler', 'Zugewiesene VeranstaltungsNrn'])
-print(schueler_zuweisung_df.head())
+# Usage example
+schueler_zuweisung = assign_courses_to_students(schuelerwahlen_df, veranstaltungsliste_df, veranstaltung_zeitslot_raum_df)
+schueler_zuweisung_df = convert_dict_to_df(schueler_zuweisung)
+print(schueler_zuweisung_df)
+
 
 # Konvertieren Sie das defaultdict zu einem DataFrame
 def convert_dict_to_df(schueler_zuweisung):
@@ -143,9 +164,24 @@ def convert_dict_to_df(schueler_zuweisung):
 
 schueler_zuweisung_df = convert_dict_to_df(schueler_zuweisung)
 
+
+def export_klassenweise_laufzettel(schueler_zuweisung_df, veranstaltungsliste_df, schuelerwahlen_df, export_basispfad):
+  for klasse in schuelerwahlen_df['Klasse'].unique():
+    schueler_der_klasse = schuelerwahlen_df[schuelerwahlen_df['Klasse'] == klasse]
+    zugewiesene_veranstaltungen = schueler_zuweisung_df.merge(schueler_der_klasse, on='Schüler')
+    laufzettel_df = zugewiesene_veranstaltungen.merge(veranstaltungsliste_df, left_on='VeranstaltungsNr', right_on='Nr. ', how='left').sort_values(by=['Zeitslot'])
+    laufzettel_pfad = os.path.join(export_basispfad, klasse, "Laufzettel_alle.xlsx")
+    laufzettel_df.to_excel(laufzettel_pfad, index=False)
+
+
+
 # Überarbeitete Funktion export_data
 def export_data(schueler_zuweisung_df, veranstaltung_zeitslot_raum_df, schuelerwahlen_df, veranstaltungsliste_df, raum_zeitplan_path, anwesenheitslisten_path, export_basispfad):
-    # Stellen Sie sicher, dass schueler_zuweisung_df tatsächlich ein DataFrame ist
+
+    export_klassenweise_laufzettel(schueler_zuweisung_df, veranstaltungsliste_df, schuelerwahlen_df, export_basispfad)
+
+
+    # Sicher stellen, dass schueler_zuweisung_df ein DataFrame ist
     print('Debugging: schueler_zuweisung_df:')
     print(schueler_zuweisung_df.head())
     if isinstance(schueler_zuweisung_df, pd.DataFrame):
@@ -158,7 +194,7 @@ def export_data(schueler_zuweisung_df, veranstaltung_zeitslot_raum_df, schuelerw
                 anwesenheitslisten[veranstaltungsnummer].append(schueler)
         pass
     else:
-        raise ValueError("schueler_zuweisung_df ist kein pandas DataFrame. Bitte überprüfen Sie die Konvertierung.")
+        raise ValueError("schueler_zuweisung_df ist kein pandas DataFrame. Bitte überprüfe die Konvertierung.")
 
     anwesenheitslisten_df = pd.DataFrame([(veranstaltungsnummer, ", ".join(schueler)) for veranstaltungsnummer, schueler in anwesenheitslisten.items()], columns=['VeranstaltungsNr', 'Teilnehmende Schüler'])
     anwesenheitslisten_df.to_excel(anwesenheitslisten_path, index=False)
@@ -186,13 +222,11 @@ def export_data(schueler_zuweisung_df, veranstaltung_zeitslot_raum_df, schuelerw
         laufzettel_df.to_excel(laufzettel_pfad, index=False)
 
 # Anwendung der Funktionen
+# Generieren Sie veranstaltung_zeitslot_raum_df
 veranstaltung_zeitslot_raum_df = zuordnung_veranstaltungen_zu_raeumen(veranstaltungsliste_df, raumliste_df)
-schueler_zuweisung_df = assign_courses_to_students(schuelerwahlen_df, veranstaltungsliste_df)
 
-# Basispfad für den Export festlegen
-export_basispfad = 'C://Users//Alex-//Desktop//Laufzettel//'
-anwesenheitslisten_path = export_basispfad +'EXPORT_BOT5_Anwesenheitslisten.xlsx'
-raum_zeitplan_path = export_basispfad + 'EXPORT_BOT3_Raum_und_Zeitplan.xlsx'
+# Weisen Sie Kurse den Schülern zu
+schueler_zuweisung_df = assign_courses_to_students(schuelerwahlen_df, veranstaltungsliste_df, veranstaltung_zeitslot_raum_df)
 
 schueler_zuweisung_df = convert_dict_to_df(schueler_zuweisung)
 
