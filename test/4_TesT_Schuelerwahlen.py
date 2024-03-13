@@ -151,6 +151,7 @@ def assign_students_to_empty_slots(schuelerwahlen_df, veranstaltungsliste_df, ra
                     schueler_zuweisungen[schueler_id].append({'Wahl': leere_wahl, 'Fachrichtung': leere_fachrichtung, 'Zeitslot': zeitslot})
                     break
 
+    print(schueler_zuweisungen)
     return schueler_zuweisungen
 
 
@@ -173,7 +174,8 @@ def complete_student_assignments(schueler_zuweisungen, veranstaltungsliste_df, r
                     if kann_zuweisen(schueler_id, fachrichtung, zeitslot):
                         schueler_zuweisungen[schueler_id].append({'Wahl': None, 'Fachrichtung': fachrichtung, 'Zeitslot': zeitslot})
                         break
-
+    
+    print(schueler_zuweisungen)
     return schueler_zuweisungen
 
 def export_results(veranstaltungsliste_df, raumliste_df, schuelerwahlen_df, export_basispfad, raum_zeitslot_df):
@@ -196,35 +198,41 @@ def export_anwesenheitslisten(schueler_zuweisungen, schuelerwahlen_df, export_ba
     zuweisungs_df = pd.DataFrame(zuweisungs_liste)
 
     schueler_info = schuelerwahlen_df[['SchuelerID', 'Name', 'Klasse']].drop_duplicates().set_index('SchuelerID')
-    anwesenheitslisten_df = zuweisungs_df.pivot_table(index=['SchuelerID', 'Veranstaltung'], columns='Zeitslot', values='Veranstaltung', aggfunc='first', fill_value='').infer_objects()
-    anwesenheitslisten_df = anwesenheitslisten_df.merge(schueler_info, on='SchuelerID', how='left').set_index(['Klasse', 'Name'])
-
-    for klasse in anwesenheitslisten_df.index.get_level_values(0).unique():
+    anwesenheitslisten_df = zuweisungs_df.pivot_table(index=['SchuelerID', 'Name', 'Klasse'], columns='Zeitslot', values='Veranstaltung', aggfunc='first', fill_value='').infer_objects()
+    
+    # Sortiere die Spalten entsprechend der Zeitslots
+    anwesenheitslisten_df = anwesenheitslisten_df.reindex(sorted(anwesenheitslisten_df.columns), axis=1)
+    
+    # Exportiere Anwesenheitslisten pro Klasse
+    for klasse in anwesenheitslisten_df.index.get_level_values(2).unique():
         klasse_df = anwesenheitslisten_df.xs(klasse, level='Klasse')
         klasse_df.to_excel(f'{export_basispfad}Anwesenheitsliste_{klasse}.xlsx')
 
-def erstelle_raumplan(veranstaltungsliste_df, raum_zeitslot_df):
-    veranstaltungs_raum_df = pd.merge(veranstaltungsliste_df, raum_zeitslot_df, left_on='Nr. ', right_on='Veranstaltung', how='left')
+    print("Anwesenheitslisten wurden erfolgreich exportiert.")
 
-    fachrichtung_spalten = ['Fachrichtung_x', 'Fachrichtung_y']
-    unternehmen_spalten = ['Unternehmen_x', 'Unternehmen_y']
-    
-    for fachrichtung_spalte, unternehmen_spalte in zip(fachrichtung_spalten, unternehmen_spalten):
-        if fachrichtung_spalte in veranstaltungs_raum_df.columns:
-            raumplan_df = veranstaltungs_raum_df.pivot_table(index=[unternehmen_spalte, fachrichtung_spalte], columns='Zeitslot', values='Raum', aggfunc='first', fill_value='')
-            return raumplan_df
 
-    print("Die Spalte 'Fachrichtung' konnte nicht gefunden werden.")
-    return None
+def formatiere_und_exportiere_raumplan(raum_zeitslot_df, export_pfad):
+    # Erstellen der Pivot-Tabelle
+    raumplan_pivot = raum_zeitslot_df.pivot_table(
+        index=['Unternehmen', 'Fachrichtung'], 
+        columns='Zeitslot', 
+        values='Raum', 
+        aggfunc='first',
+        fill_value='')
+
+    # Exportieren des formatierten Raumplans in eine Excel-Datei
+    raumplan_pivot.to_excel(export_pfad, index=True)
+    print(f"Formatierter Raumplan wurde erfolgreich nach {export_pfad} exportiert.")
+
 
 def main():
 
     # Dateipfade
-    basisimportpfad = 'C://Users//Alex-//Desktop//Schulprojekt//DPA//data//'
+    basisimportpfad = 'C://Users//SE//Schulprojekt//DPA//data//'
     schueler_wahlen_path = basisimportpfad + 'IMPORT_BOT2_Wahl.xlsx'
     raumliste_path = basisimportpfad + 'IMPORT_BOT0_Raumliste.xlsx'
     veranstaltungsliste_path = basisimportpfad + 'IMPORT_BOT1_Veranstaltungsliste.xlsx'
-    export_basispfad = 'C://Users//Alex-//Desktop//Laufzettel//'
+    export_basispfad = 'C://Users//SE//Desktop//Laufzettel//'
     anwesenheitslisten_path = export_basispfad + 'EXPORT_BOT5_Anwesenheitslisten.xlsx'
     raum_zeitplan_path = export_basispfad + 'EXPORT_BOT3_Raum_und_Zeitplan.xlsx'
 
@@ -255,12 +263,13 @@ def main():
     # Exportiere die Ergebnisse
     export_results(veranstaltungsliste_df, raumliste_df, schuelerwahlen_df, export_basispfad, raum_zeitslot_df)
     export_anwesenheitslisten(schueler_zuweisungen, schuelerwahlen_df, export_basispfad)
-    raumplan_df = erstelle_raumplan(veranstaltungsliste_df, raum_zeitslot_df)
-    if raumplan_df is not None:
-        raumplan_df.to_excel(raum_zeitplan_path)
-        print("Raumplan erfolgreich erstellt und exportiert.")
-    else:
-        print("Fehler beim Erstellen des Raumplans.")
+    formatiere_und_exportiere_raumplan(raum_zeitslot_df, export_basispfad + 'Raumplan.xlsx')
+
+    # Ergebnisse ausgeben
+    print("Finaler Raum- und Zeitplan:")
+    print(raum_zeitslot_df)  # Zeigt den Raum- und Zeitplan an
+    print("\nAnwesenheitslisten:")
+    print(schueler_zuweisungen)  # Zeigt die Zuweisungen der Schüler zu Veranstaltungen an
 
 if __name__ == "__main__":
     main()
