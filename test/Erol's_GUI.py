@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 import openpyxl
 import os
+from AlexGPT import AlexGPT
+
 
 def open_excel_file(button_num):
     initial_dir = r'H:\Schule\03 Oberstufe\SuD\00 Projekt\DPA'
@@ -25,11 +27,11 @@ def open_excel_file(button_num):
 def process_excel_data(workbook, button_num, file_path):
     # Hier kannst du die Daten der Excel-Datei verarbeiten oder an eine andere Funktion übergeben
     if button_num == 1:
-        file_path_var1.set(os.path.basename(file_path))
+        file_path_var1.set(file_path)
     elif button_num == 2:
-        file_path_var2.set(os.path.basename(file_path))
+        file_path_var2.set(file_path)
     elif button_num == 3:
-        file_path_var3.set(os.path.basename(file_path))
+        file_path_var3.set(file_path)
 
 # Funktion zum Löschen des Dateipfads
 def clear_file_path(button_num):
@@ -41,9 +43,22 @@ def clear_file_path(button_num):
         file_path_var3.set("")
 
 # Funktion zur Übernahme der Daten
-def schnittstelle(): #TODO: Hier muss noch die Funktion eingefügt werden, die die Daten übernimmt
-    # Hier kannst du die ausgewählten Daten übernehmen und weiterverarbeiten
+def schnittstelle():
+    # Abrufen der ausgewählten Dateipfade
+    file_path_1 = file_path_var1.get()
+    file_path_2 = file_path_var2.get()
+    file_path_3 = file_path_var3.get()
     
+    # Überprüfen, ob alle Dateipfade ausgewählt wurden
+    if file_path_1 and file_path_2 and file_path_3:
+        # Übergeben der Dateipfade an die AlexGPT-Klasse
+        alexGPT = AlexGPT(file_path_1, file_path_2, file_path_3)
+        # Aufruf der Hauptmethode der AlexGPT-Klasse
+        alexGPT.main()
+    else:
+        # Zeige eine Fehlermeldung, wenn nicht alle Dateipfade ausgewählt wurden
+        messagebox.showerror("Fehler", "Bitte wählen Sie alle Excel-Dateien aus.")
+
 
 # Erstelle das Hauptfenster
 root = tk.Tk()
