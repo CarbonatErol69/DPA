@@ -13,14 +13,24 @@ def load_data(schueler_wahlen_path, raumliste_path, veranstaltungsliste_path):
     print('Raumliste:', raumliste_df.columns)
     print('Veranstaltungsliste:', veranstaltungsliste_df.columns)
     print('Schülerwahlen:', schuelerwahlen_df.columns)
+
     return schuelerwahlen_df, raumliste_df, veranstaltungsliste_df
 
 def prepare_veranstaltungsliste(veranstaltungsliste_df):
     """Bereitet die Veranstaltungsliste vor."""
     print("Vorbereite Veranstaltungsliste...")
+    company_time_slots = defaultdict(list)
     zeitpunkt_mapping = {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5}
     veranstaltungsliste_df['Frühester Zeitpunkt Num'] = veranstaltungsliste_df['Frühester Zeitpunkt'].map(zeitpunkt_mapping)
+    for company in veranstaltungsliste_df['Unternehmen'].unique():
+        earliest_time = veranstaltungsliste_df[veranstaltungsliste_df['Unternehmen'] == company]['Frühester Zeitpunkt Num'].min()
+        # Assign 5 available time slots starting from the earliest time
+        available_time_slots = list(range(earliest_time, earliest_time + 5))
+        company_time_slots[company] = available_time_slots[:5]  # Ensure only 5 slots are assigned
+    veranstaltungsliste_df['Verfügbare Zeitfenster'] = veranstaltungsliste_df.apply(lambda row: company_time_slots[row['Unternehmen']], axis=1)
+    print(veranstaltungsliste_df)
     return veranstaltungsliste_df
+
 
 def calculate_event_demand(schuelerwahlen_df, veranstaltungsliste_df):
     """Berechnet die Nachfrage nach Veranstaltungen."""
@@ -31,6 +41,7 @@ def calculate_event_demand(schuelerwahlen_df, veranstaltungsliste_df):
             event_id = row[f'Wahl {wahl_num}']
             if pd.notna(event_id):
                 event_demand[event_id] += 1
+    print(event_demand)
     return event_demand
 
 def assign_rooms_to_companies(veranstaltungsliste_df, raumliste_df):
@@ -121,28 +132,20 @@ def complete_student_assignments(schueler_zuweisungen, raum_zuweisung, schuelerw
     """Vervollständigt die Zuweisung von Schülern zu Veranstaltungen."""
     print("Vervollständige Zuweisung von Schülern zu Veranstaltungen...")
     verbleibende_wuensche = defaultdict(list)
+    
+    # Iteriere über alle Schüler und deren Zuweisungen
     for schueler_id, zuweisungen in schueler_zuweisungen.items():
-        for event_id, raum in zuweisungen:
-            if len(schuelerwahlen_df.loc[schuelerwahlen_df['SchuelerID'] == schueler_id, f'Wahl 1':'Wahl 6'].values[0]) == 6:
-                schuelerwahlen_df.loc[schuelerwahlen_df['SchuelerID'] == schueler_id, f'Wahl 1'] = event_id
-            elif len(schuelerwahlen_df.loc[schuelerwahlen_df['SchuelerID'] == schueler_id, f'Wahl 1':'Wahl 6'].values[0]) == 5:
-                schuelerwahlen_df.loc[schuelerwahlen_df['SchuelerID'] == schueler_id, f'Wahl 2'] = event_id
-            elif len(schuelerwahlen_df.loc[schuelerwahlen_df['SchuelerID'] == schueler_id, f'Wahl 1':'Wahl 6'].values[0]) == 4:
-                schuelerwahlen_df.loc[schuelerwahlen_df['SchuelerID'] == schueler_id, f'Wahl 3'] = event_id
-            elif len(schuelerwahlen_df.loc[schuelerwahlen_df['SchuelerID'] == schueler_id, f'Wahl 1':'Wahl 6'].values[0]) == 3:
-                schuelerwahlen_df.loc[schuelerwahlen_df['SchuelerID'] == schueler_id, f'Wahl 4'] = event_id
-            elif len(schuelerwahlen_df.loc[schuelerwahlen_df['SchuelerID'] == schueler_id, f'Wahl 1':'Wahl 6'].values[0]) == 2:
-                schuelerwahlen_df.loc[schuelerwahlen_df['SchuelerID'] == schueler_id, f'Wahl 5'] = event_id
-            elif len(schuelerwahlen_df.loc[schuelerwahlen_df['SchuelerID'] == schueler_id, f'Wahl 1':'Wahl 6'].values[0]) == 1:
-                schuelerwahlen_df.loc[schuelerwahlen_df['SchuelerID'] == schueler_id, f'Wahl 6'] = event_id
-            else:
-                print(f"Schüler {schueler_id} hat alle Wünsche zugewiesen.")
+        # Entferne alle Wahlen, wenn weniger als 10 Zuweisungen existieren
         if len(zuweisungen) < 10:
-            print(f"Warnung: Weniger als 10 Schüler ({len(zuweisungen)}) für Veranstaltung {event_id} zugewiesen. Entferne Zeitslot...")
-            for event_id, raum in zuweisungen:
+            print(f"Warnung: Weniger als 10 Schüler ({len(zuweisungen)}) für Veranstaltung zugewiesen. Entferne Wahlen...")
+            for wahl_num in range(1, 7):
                 schuelerwahlen_df.loc[schuelerwahlen_df['SchuelerID'] == schueler_id, f'Wahl {wahl_num}'] = np.nan
-                verbleibende_wuensche[schueler_id].append(event_id)
+                # Hier könntest du verbleibende Wünsche oder eine andere Logik hinzufügen
+        else:
+            print(f"Schüler {schueler_id} hat alle Wünsche zugewiesen.")
+
     return schueler_zuweisungen, verbleibende_wuensche
+
 
 def redistribute_students(schueler_zuweisungen, verbleibende_wuensche, raum_zuweisung, veranstaltungsliste_df):
     """Verteilt Schüler auf noch freie Räume."""
@@ -153,7 +156,9 @@ def redistribute_students(schueler_zuweisungen, verbleibende_wuensche, raum_zuwe
             if raum:
                 schueler_zuweisungen[schueler_id].append((event_id, raum))
                 print(f"Schüler {schueler_id} erneut zugewiesen zu Veranstaltung {event_id}, Raum: {raum}")
+    print(schueler_zuweisungen)
     return schueler_zuweisungen
+        
 
 def generate_time_slots(veranstaltungsliste_df, num_slots):
     """Generiert Zeitslots entsprechend den Zeitfenstern in der Veranstaltungsliste."""
@@ -169,12 +174,25 @@ def generate_time_slots(veranstaltungsliste_df, num_slots):
     slots_df = pd.DataFrame(rows)
     return slots_df
 
+def remove_insufficient_slots(zeitslots_df):
+    """Entfernt Zeitslots mit weniger als 10 Belegungen."""
+    print("Überprüfe Zeitslots auf ausreichende Belegung...")
+    print(zeitslots_df)
+    for slot in zeitslots_df.columns:
+        # Zähle, wie viele Veranstaltungen in jedem Slot zugewiesen sind
+        count = zeitslots_df[slot].notnull().sum()
+        if count < 10:
+            print(f"Warnung: Zeitslot {slot} hat weniger als 10 Belegungen ({count}). Überlege, diesen Slot zu entfernen oder anders zu handhaben.")
+            # Füge hier die Logik zum Entfernen oder Umgang mit diesem Slot hinzu.
+
+
+
 def main():
     """Hauptfunktion des Programms."""
 
     # Dateipfade
     ## Importpfade
-    basisimportpfad = 'C://Users//SE//Schulprojekt//DPA//data//'
+    basisimportpfad = 'C://Users//Alex-//Desktop//Schulprojekt//DPA//data//'
     schueler_wahlen_path = basisimportpfad + 'IMPORT_BOT2_Wahl.xlsx'
     raumliste_path = basisimportpfad + 'IMPORT_BOT0_Raumliste.xlsx'
     veranstaltungsliste_path = basisimportpfad + 'IMPORT_BOT1_Veranstaltungsliste.xlsx'
@@ -198,6 +216,8 @@ def main():
         schueler_zuweisungen, verbleibende_wuensche = complete_student_assignments(schueler_zuweisungen, raum_zuweisung, schuelerwahlen_df)
         if verbleibende_wuensche:
             schueler_zuweisungen = redistribute_students(schueler_zuweisungen, verbleibende_wuensche, raum_zuweisung, veranstaltungsliste_df)
+
+    remove_insufficient_slots(zeitslots_df)
 
 if __name__ == "__main__":
     main()
