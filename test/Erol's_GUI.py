@@ -2,8 +2,6 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 import openpyxl
 import os
-from AlexGPT import AlexGPT
-
 
 def open_excel_file(button_num):
     initial_dir = r'H:\Schule\03 Oberstufe\SuD\00 Projekt\DPA'
@@ -45,8 +43,7 @@ def clear_file_path(button_num):
 # Funktion zur Übernahme der Daten
 def schnittstelle(): #TODO: Hier muss noch die Funktion eingefügt werden, die die Daten übernimmt
     # Hier kannst du die ausgewählten Daten übernehmen und weiterverarbeiten
-    alexGPT = AlexGPT()
-    alexGPT.main()
+    
 
 # Erstelle das Hauptfenster
 root = tk.Tk()
