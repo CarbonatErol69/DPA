@@ -76,7 +76,7 @@ def calculate_event_demand(schuelerwahlen_df, veranstaltungsliste_df):
     """Berechnet die Nachfrage nach Veranstaltungen."""
     print("Berechne Nachfrage nach Veranstaltungen...")
     event_demand = defaultdict(int)
-    for wahl_num in range(1, 6):  # Nur die Wahlen von 1 bis 5 berücksichtigen
+    for wahl_num in range(1, 5):  # Nur die Wahlen von 1 bis 4 berücksichtigen
         for _, row in schuelerwahlen_df.iterrows():
             event_id = row[f'Wahl {wahl_num}']
             if pd.notna(event_id):
@@ -108,6 +108,13 @@ def assign_students_to_events(schuelerwahlen_df, veranstaltungsliste_df, raum_zu
     print("Weise Schüler zu Veranstaltungen zu...")
     schueler_zuweisungen = defaultdict(list)
     
+    # Erstelle eine Zuordnung von Veranstaltungen zu verbleibenden Plätzen pro Zeitfenster
+    remaining_slots = defaultdict(int)
+    for _, row in veranstaltungsliste_df.iterrows():
+        for slot in row['Verfügbare Zeitfenster']:
+            remaining_slots[(row['Nr. '], slot)] = row['Max. Teilnehmer']
+    
+    # Iteriere durch jeden Schüler
     for _, schueler in schuelerwahlen_df.iterrows():
         schueler_id = schueler['SchuelerID']
         
@@ -119,14 +126,18 @@ def assign_students_to_events(schuelerwahlen_df, veranstaltungsliste_df, raum_zu
             if pd.notna(event_id):
                 raum = raum_zuweisung.get(event_id, None)
                 
-                # Wenn ein Raum für die Veranstaltung gefunden wurde
-                if raum:
+                # Wenn ein Raum für die Veranstaltung gefunden wurde und noch Platz vorhanden ist
+                if raum and remaining_slots.get((event_id, raum), 0) > 0:
+                    # Reduziere die Anzahl der verbleibenden Plätze für diese Veranstaltung und dieses Zeitfenster
+                    remaining_slots[(event_id, raum)] -= 1
                     # Füge die Zuweisung zum Schüler hinzu
                     schueler_zuweisungen[schueler_id].append((event_id, raum))
                     print(f"Schüler {schueler_id} zugewiesen zu Veranstaltung {event_id}, Raum: {raum}")
                     break  # Breche ab, da der Schüler erfolgreich zugewiesen wurde
     print(schueler_zuweisungen)
     return schueler_zuweisungen
+
+
 
 
 def assign_remaining_students(schuelerwahlen_df, schueler_zuweisungen, room_assignment_matrix):
@@ -158,6 +169,46 @@ def assign_remaining_students(schuelerwahlen_df, schueler_zuweisungen, room_assi
             print(f"Schüler {schueler_id} hat bereits alle 5 Slots zugewiesen bekommen.")
     
     return schueler_zuweisungen
+
+
+def export_student_assignments(schueler_zuweisungen, output_path):
+    """Exportiert die Schülerzuweisungen in eine Excel-Datei."""
+    print("Exportiere Schülerzuweisungen...")
+    
+    # Erstelle eine leere Liste für die Zeilen des DataFrames
+    rows = []
+    
+    # Fülle die Liste mit den Zuweisungen für jeden Schüler
+    for schueler_id, zuweisungen in schueler_zuweisungen.items():
+        if zuweisungen:  # Überprüfe, ob der Schüler Zuweisungen hat
+            for zuweisung in zuweisungen:
+                if isinstance(zuweisung, tuple) and len(zuweisung) == 3:
+                    unternehmen, fachrichtung, zeitslot = zuweisung  # Zugriff auf Unternehmen, Fachrichtung und Zeitslot
+                    rows.append({
+                        "SchuelerID": schueler_id,
+                        "Zeitslot": zeitslot,  # Zugriff auf den Zeitslot
+                        "Unternehmen": unternehmen,
+                        "Fachrichtung": fachrichtung
+                    })
+                else:
+                    print(f"Warnung: Ungültige Zuweisung für Schüler {schueler_id}: {zuweisung}")
+    
+    # Erstelle ein DataFrame aus der Liste von Zeilen
+    export_df = pd.DataFrame(rows)
+    
+    # Sortiere das DataFrame nach SchülerID und Zeitslot
+    export_df = export_df.sort_values(by=["SchuelerID", "Zeitslot"])
+    
+    # Exportiere das DataFrame in eine Excel-Datei
+    export_df.to_excel(output_path, index=False)
+    
+    print(f"Die Schülerzuweisungen wurden erfolgreich in '{output_path}' exportiert.")
+
+
+
+
+
+
 
 def main():
     """Hauptfunktion des Programms."""
@@ -191,6 +242,9 @@ def main():
     print("\nVollständige Raumliste:")
     print(room_assignment_matrix)
 
+
+    output_path = 'C://Users//Alex-//Desktop//Schueler_Zuweisungen.xlsx'
+    export_student_assignments(schueler_zuweisungen, output_path)
+
 if __name__ == "__main__":
     main()
-
