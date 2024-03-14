@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 import openpyxl
 import os
+from AlexGPT import AlexGPT
+
 
 def open_excel_file(button_num):
     initial_dir = r'H:\Schule\03 Oberstufe\SuD\00 Projekt\DPA'
@@ -41,9 +43,10 @@ def clear_file_path(button_num):
         file_path_var3.set("")
 
 # Funktion zur Übernahme der Daten
-def take_over_data():
+def schnittstelle(): #TODO: Hier muss noch die Funktion eingefügt werden, die die Daten übernimmt
     # Hier kannst du die ausgewählten Daten übernehmen und weiterverarbeiten
-    pass
+    alexGPT = AlexGPT()
+    alexGPT.main()
 
 # Erstelle das Hauptfenster
 root = tk.Tk()
@@ -86,7 +89,7 @@ delete_button3 = tk.Button(file_path_entry3, text="X", command=lambda: clear_fil
 delete_button3.pack(side=tk.RIGHT)
 
 # Erstelle den Button zur Übernahme der Daten und füge ihn dem Hauptfenster hinzu
-take_over_button = tk.Button(root, text="Daten übernehmen", command=take_over_data)
+take_over_button = tk.Button(root, text="Daten übernehmen", command=schnittstelle)
 take_over_button.pack(padx=10, pady=10, fill=tk.X)
 
 # Starte die Hauptschleife des Hauptfensters
