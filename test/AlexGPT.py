@@ -17,6 +17,7 @@ class AlexGPT():
         self.count_votes()
         self.create_event_df()
         self.create_timetable()
+        self.company_to_events()
         '''
         print(self.schueler_wahlen_path)
         self.create_dataframes()
@@ -108,6 +109,37 @@ class AlexGPT():
         #TODO: 
 
         print(self.df_timetable)
+
+
+    def company_to_events(self):
+        self.event_to_comp = []
+
+        for e in self.df_merged_sorted.index:
+            company = self.df_merged_sorted['Unternehmen'][e]
+            event_number = self.df_merged_sorted['event_number'][e]
+            
+            # Check if the company already exists in the list
+            for i, item in enumerate(self.event_to_comp):
+                if item[0] == company:
+                    # If the company already exists, add the event number to the existing record
+                    self.event_to_comp[i] = (company, item[1] + event_number)
+                    break
+            else:
+                # If the company does not exist, add a new tuple
+                self.event_to_comp.append((company, event_number))
+
+        # Merge duplicate company names into one record
+        merged_event_to_comp = []
+        merged_companies = set()
+        for company, event_number in self.event_to_comp:
+            if company not in merged_companies:
+                merged_event_to_comp.append((company, event_number))
+                merged_companies.add(company)
+
+        print(merged_event_to_comp)
+
+
+
 
 
 
