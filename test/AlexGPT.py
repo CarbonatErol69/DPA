@@ -16,8 +16,9 @@ class AlexGPT():
         self.create_dataframes()
         self.count_votes()
         self.create_event_df()
-        self.create_timetable()
         self.company_to_events()
+        self.create_timetable()
+        
         '''
         print(self.schueler_wahlen_path)
         self.create_dataframes()
@@ -101,6 +102,7 @@ class AlexGPT():
             available_columns = room_row[1:][room_row[1:].isnull()].index.tolist()
             for i in range(min(available_slots, len(available_columns))):
                 self.df_timetable.loc[min_events_room, available_columns[i]] = event_number
+                
 
         #TODO: check for frühester startzeitpunkt
                 
@@ -110,35 +112,61 @@ class AlexGPT():
 
         print(self.df_timetable)
 
+    def create_timetable2(self):
+        self.df_slots = pd.DataFrame(columns=['A', 'B', 'C', 'D', 'E'])
+        self.df_timetable = pd.concat([self.df_raum, self.df_slots[['A', 'B', 'C', 'D', 'E']]], axis=1)
+
+        # Sort df_merged by 'Total 1-3' in descending order
+        self.df_merged_sorted = self.merged_df.sort_values('Total 1-3', ascending=False)
+
+        # Iterate over the sorted events
+        for i in self.company_event_list:
+            
+            
+            # Find the room with the least number of events already assigned
+            min_events_room = self.df_timetable.iloc[:, 1:].apply(lambda row: row.notnull().sum(), axis=1).idxmin()
+            
+            # Assign the event to the room with the least number of events
+            room_row = self.df_timetable.loc[min_events_room]
+            available_slots = rundet_slots - room_row[1:].eq(event_number).sum()
+            available_columns = room_row[1:][room_row[1:].isnull()].index.tolist()
+            for i in range(min(available_slots, len(available_columns))):
+                self.df_timetable.loc[min_events_room, available_columns[i]] = event_number
+
+
+
+
+                
+#pseudo: if n_assigned_events <= nötige_slots:
 
     def company_to_events(self):
-        self.event_to_comp = []
+        self.single_event_list = []
+        self.multiple_event_list = []
 
         for e in self.df_merged_sorted.index:
             company = self.df_merged_sorted['Unternehmen'][e]
             event_number = self.df_merged_sorted['event_number'][e]
             
-            # Check if the company already exists in the list
-            for i, item in enumerate(self.event_to_comp):
+            # Überprüfen, ob das Unternehmen bereits in der Liste ist
+            for i, item in enumerate(self.single_event_list):
                 if item[0] == company:
-                    # If the company already exists, add the event number to the existing record
-                    self.event_to_comp[i] = (company, item[1] + event_number)
+                    # Wenn das Unternehmen bereits vorhanden ist, füge die Anzahl der Ereignisse hinzu
+                    multiple_events_tuple = self.single_event_list[i] + (event_number,)
+                    self.multiple_event_list.append(multiple_events_tuple)
                     break
             else:
-                # If the company does not exist, add a new tuple
-                self.event_to_comp.append((company, event_number))
+                # Wenn das Unternehmen nicht vorhanden ist, füge ein neues Tupel hinzu
+                self.single_event_list.append((company, event_number))
+        
+        self.company_event_list = self.multiple_event_list
 
-        # Merge duplicate company names into one record
-        merged_event_to_comp = []
-        merged_companies = set()
-        for company, event_number in self.event_to_comp:
-            if company not in merged_companies:
-                merged_event_to_comp.append((company, event_number))
-                merged_companies.add(company)
+        for i in self.single_event_list:
+            if not any(i[0] == x[0] for x in self.multiple_event_list):
+                self.company_event_list.append(i)
 
-        print(merged_event_to_comp)
+    
 
-
+        
 
 
 

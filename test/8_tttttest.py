@@ -26,7 +26,7 @@ def verarbeite_schueler_wahlen(schuelerwahlen_df):
     return wahlen_count_df.sort_values(by='Anzahl_Wahlen', ascending=False)
 
 def berechne_mindest_events_anpassung(veranstaltungsliste_df, wahlen_haeufigkeiten_df):
-    veranstaltungsliste_df = veranstaltungsliste_df.merge(wahlen_haeufigkeiten_df, left_on='Nr.', right_on='Wahl_Nummer', how='left')
+    veranstaltungsliste_df = veranstaltungsliste_df.merge(wahlen_haeufigkeiten_df, left_on='Nr. ', right_on='Wahl_Nummer', how='left')
     veranstaltungsliste_df['Benötigte Veranstaltungen'] = veranstaltungsliste_df.apply(
         lambda row: np.ceil(row['Anzahl_Wahlen'] / row['Max. Teilnehmer']) if row['Anzahl_Wahlen'] >= 10 else 0, axis=1).astype(int)
     veranstaltungsliste_df.drop(['Wahl_Nummer', 'Anzahl_Wahlen'], axis=1, inplace=True)
@@ -44,7 +44,7 @@ def verteile_veranstaltungen(raumliste_df, veranstaltungsliste_df, wahlen_haeufi
     raum_zu_unternehmen = defaultdict(list)  # Zuordnung von Raum zu Unternehmen für den ganzen Tag
 
     for _, row in veranstaltungsliste_df.iterrows():
-        nr = row['Nr.']
+        nr = row['Nr. ']
         unternehmen = row['Unternehmen']
         benötigte_veranstaltungen = row['Benötigte Veranstaltungen']
 
@@ -78,14 +78,14 @@ def verteile_veranstaltungen(raumliste_df, veranstaltungsliste_df, wahlen_haeufi
 def identifiziere_mehrfache_veranstaltungen(veranstaltungsliste_df):
     unternehmen_zu_veranstaltungen = defaultdict(list)
     for _, row in veranstaltungsliste_df.iterrows():
-        unternehmen_zu_veranstaltungen[row['Unternehmen']].append(row['Nr.'])
+        unternehmen_zu_veranstaltungen[row['Unternehmen']].append(row['Nr. '])
     mehrfache_veranstaltungen = {k: v for k, v in unternehmen_zu_veranstaltungen.items() if len(v) > 1}
     return mehrfache_veranstaltungen
 
 
 
 def main():
-    basisimportpfad = 'C://Users//Alex-//Desktop//Schulprojekt//DPA//data//'
+    basisimportpfad = 'C://Users//T1485841//Documents//Projekte//Schulprojekt//DPA//Imports//'
     schueler_wahlen_path = basisimportpfad + 'IMPORT_BOT2_Wahl.xlsx'
     raumliste_path = basisimportpfad + 'IMPORT_BOT0_Raumliste.xlsx'
     veranstaltungsliste_path = basisimportpfad + 'IMPORT_BOT1_Veranstaltungsliste.xlsx'

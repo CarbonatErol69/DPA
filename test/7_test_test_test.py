@@ -215,7 +215,7 @@ def main():
 
     # Dateipfade
     ## Importpfade
-    basisimportpfad = 'C://Users//Alex-//Desktop//Schulprojekt//DPA//data//'
+    basisimportpfad = 'C://Users//T1485841//Documents//Projekte//Schulprojekt//DPA//Imports//'
     schueler_wahlen_path = basisimportpfad + 'IMPORT_BOT2_Wahl.xlsx'
     raumliste_path = basisimportpfad + 'IMPORT_BOT0_Raumliste.xlsx'
     veranstaltungsliste_path = basisimportpfad + 'IMPORT_BOT1_Veranstaltungsliste.xlsx'
