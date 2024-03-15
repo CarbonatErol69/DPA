@@ -17,7 +17,8 @@ class AlexGPT():
         self.count_votes()
         self.create_event_df()
         self.company_to_events()
-        self.create_timetable()
+        #self.create_timetable()
+        self.create_titty()
         
         '''
         print(self.schueler_wahlen_path)
@@ -81,7 +82,7 @@ class AlexGPT():
         # Round the 'Optionale Slots' column up or down
         self.merged_df['Rundet Optionale Slots'] = self.merged_df['Optionale Slots'].apply(lambda x: math.ceil(x) if x - math.floor(x) >= 0.25 else math.floor(x))
 
-    def create_timetable(self):
+    '''def create_timetable(self):
         self.df_slots = pd.DataFrame(columns=['A', 'B', 'C', 'D', 'E'])
         self.df_timetable = pd.concat([self.df_raum, self.df_slots[['A', 'B', 'C', 'D', 'E']]], axis=1)
 
@@ -101,7 +102,7 @@ class AlexGPT():
             available_slots = rundet_slots - room_row[1:].eq(event_number).sum()
             available_columns = room_row[1:][room_row[1:].isnull()].index.tolist()
             for i in range(min(available_slots, len(available_columns))):
-                self.df_timetable.loc[min_events_room, available_columns[i]] = event_number
+                self.df_timetable.loc[min_events_room, available_columns[i]] = event_number'''
                 
 
         #TODO: check for frühester startzeitpunkt
@@ -110,28 +111,7 @@ class AlexGPT():
                 
         #TODO: 
 
-        print(self.df_timetable)
-
-    def create_timetable2(self):
-        self.df_slots = pd.DataFrame(columns=['A', 'B', 'C', 'D', 'E'])
-        self.df_timetable = pd.concat([self.df_raum, self.df_slots[['A', 'B', 'C', 'D', 'E']]], axis=1)
-
-        # Sort df_merged by 'Total 1-3' in descending order
-        self.df_merged_sorted = self.merged_df.sort_values('Total 1-3', ascending=False)
-
-        # Iterate over the sorted events
-        for i in self.company_event_list:
-            
-            
-            # Find the room with the least number of events already assigned
-            min_events_room = self.df_timetable.iloc[:, 1:].apply(lambda row: row.notnull().sum(), axis=1).idxmin()
-            
-            # Assign the event to the room with the least number of events
-            room_row = self.df_timetable.loc[min_events_room]
-            available_slots = rundet_slots - room_row[1:].eq(event_number).sum()
-            available_columns = room_row[1:][room_row[1:].isnull()].index.tolist()
-            for i in range(min(available_slots, len(available_columns))):
-                self.df_timetable.loc[min_events_room, available_columns[i]] = event_number
+        #print(self.df_timetable)
 
 
 
@@ -140,6 +120,7 @@ class AlexGPT():
 #pseudo: if n_assigned_events <= nötige_slots:
 
     def company_to_events(self):
+        self.df_merged_sorted = self.merged_df.sort_values('Total 1-3', ascending=False)
         self.single_event_list = []
         self.multiple_event_list = []
 
@@ -165,8 +146,50 @@ class AlexGPT():
                 self.company_event_list.append(i)
 
     
+    '''def create_titty_test(self)
+        for e in self.company_event_list:
+            for item in e[0:]:
+                for i in self.df_merged_sorted.index:
+                    if self.df_merged_sorted['event_number'] == item:
+                        assigned_events = 0
+                        while assigned_events < self.df_merged_sorted['Rundet nötige Slots']:
+                            df_timetable = df_timetable'''
+                            
 
+    def create_titty(self):
+        self.df_slots = pd.DataFrame(columns=['A', 'B', 'C', 'D', 'E'])
+        self.df_timetable = pd.concat([self.df_raum, self.df_slots[['A', 'B', 'C', 'D', 'E']]], axis=1)
         
+        print(self.df_timetable)
+
+        for e in self.company_event_list:
+            for item in e[0:]:
+                for i in self.df_merged_sorted.index:
+                    #event = self.df_merged_sorted[self.df_merged_sorted['event_number'][i] == item]
+                    if self.df_merged_sorted['event_number'][i] == item:
+                        assigned_events = 0
+                        while assigned_events < self.df_merged_sorted['Rundet nötige Slots'][i]:
+                            
+                            
+                            assigned_events += 1
+
+
+'''     
+    Raum  Kapazität    A    B    C    D    E
+0    008         15  NaN  NaN  NaN  NaN  NaN
+1    101         20  NaN  NaN  NaN  NaN  NaN
+2    102         20  NaN  NaN  NaN  NaN  NaN
+3    103         20  NaN  NaN  NaN  NaN  NaN
+4    106         20  NaN  NaN  NaN  NaN  NaN
+5    107         20  NaN  NaN  NaN  NaN  NaN
+6    108         20  NaN  NaN  NaN  NaN  NaN
+7    109         20  NaN  NaN  NaN  NaN  NaN
+8    110         20  NaN  NaN  NaN  NaN  NaN
+9    111         20  NaN  NaN  NaN  NaN  NaN
+10   112         20  NaN  NaN  NaN  NaN  NaN
+11   113         20  NaN  NaN  NaN  NaN  NaN
+12  Aula         50  NaN  NaN  NaN  NaN  NaN
+13   209         20  NaN  NaN  NaN  NaN  NaN'''
 
 
 
@@ -201,7 +224,7 @@ class AlexGPT():
 
 
 
-        '''
+'''
         
 
     def prepare_veranstaltungsliste(self):
