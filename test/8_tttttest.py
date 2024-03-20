@@ -33,59 +33,62 @@ def berechne_mindest_events_anpassung(veranstaltungsliste_df, wahlen_haeufigkeit
     print(veranstaltungsliste_df)
     return veranstaltungsliste_df
 
-def verteile_veranstaltungen(raumliste_df, veranstaltungsliste_df, wahlen_haeufigkeiten_df):
-    # Unternehmen identifizieren, die mehr als eine Veranstaltung haben
-    unternehmen_mit_mehreren_veranstaltungen = identifiziere_mehrfache_veranstaltungen(veranstaltungsliste_df)
-
-    # Sortiere Veranstaltungen nach der Anzahl der benötigten Veranstaltungen, um zuerst die größten zu platzieren
-    veranstaltungsliste_df = veranstaltungsliste_df.sort_values(by='Benötigte Veranstaltungen', ascending=False)
-
-    raum_zu_veranstaltung = {raum['Raum']: [] for _, raum in raumliste_df.iterrows()}
-    raum_zu_unternehmen = defaultdict(list)  # Zuordnung von Raum zu Unternehmen für den ganzen Tag
-
-    for _, row in veranstaltungsliste_df.iterrows():
-        nr = row['Nr. ']
-        unternehmen = row['Unternehmen']
-        benötigte_veranstaltungen = row['Benötigte Veranstaltungen']
-
-        # Wenn das Unternehmen bereits für den ganzen Tag einen Raum hat, nutze diesen Raum
-        if unternehmen in raum_zu_unternehmen:
-            raum = raum_zu_unternehmen[unternehmen][-1]  # Letzter Raum für das Unternehmen
-            # Überprüfen, ob der Raum genug Platz für die benötigten Veranstaltungen hat
-            if len(raum_zu_veranstaltung[raum]) + benötigte_veranstaltungen <= 5:
-                raum_zu_veranstaltung[raum].extend([nr] * benötigte_veranstaltungen)
-                continue
-
-        # Suche nach einem Raum, der genug Platz hat und Events hintereinander platziert werden können
-        for raum in raum_zu_veranstaltung:
-            if len(raum_zu_veranstaltung[raum]) + benötigte_veranstaltungen <= 5:
-                if benötigte_veranstaltungen >= 3:
-                    # Überprüfe, ob hintereinander genug Platz ist
-                    if all(len(raum_zu_veranstaltung[raum][i:i+benötigte_veranstaltungen]) == 0 for i in range(5-benötigte_veranstaltungen+1)):
-                        raum_zu_veranstaltung[raum].extend([nr] * benötigte_veranstaltungen)
-                        raum_zu_unternehmen[unternehmen].extend([raum] * benötigte_veranstaltungen)
-                        break
-                else:
-                    raum_zu_veranstaltung[raum].extend([nr] * benötigte_veranstaltungen)
-                    raum_zu_unternehmen[unternehmen].extend([raum] * benötigte_veranstaltungen)
-                    break
-        else:
-            # Kein Raum gefunden, der Platz bietet, füge eine Warnung hinzu
-            print(f"Warnung: Nicht genügend Platz für Veranstaltung {nr} ({benötigte_veranstaltungen} benötigt) gefunden.")
-
-    return raum_zu_veranstaltung
-
 def identifiziere_mehrfache_veranstaltungen(veranstaltungsliste_df):
+    """Identifiziert Unternehmen mit mehreren Veranstaltungen."""
     unternehmen_zu_veranstaltungen = defaultdict(list)
     for _, row in veranstaltungsliste_df.iterrows():
-        unternehmen_zu_veranstaltungen[row['Unternehmen']].append(row['Nr. '])
+        unternehmen_zu_veranstaltungen[row['Unternehmen']].append(row)
     mehrfache_veranstaltungen = {k: v for k, v in unternehmen_zu_veranstaltungen.items() if len(v) > 1}
     return mehrfache_veranstaltungen
+
+def verteile_veranstaltungen(raumliste_df, veranstaltungsliste_df, wahlen_haeufigkeiten_df):
+    raum_zu_veranstaltung = {raum: [] for raum in raumliste_df['Raum']}
+    unternehmen_mehrfach = identifiziere_mehrfache_veranstaltungen(veranstaltungsliste_df)
+
+    for unternehmen, veranstaltungen in unternehmen_mehrfach.items():
+        # Berechne die Gesamtnachfrage für die Veranstaltungen des Unternehmens
+        gesamte_nachfrage = sum(veranstaltung['Benötigte Veranstaltungen'] for veranstaltung in veranstaltungen)
+        gesamtveranstaltungen_pro_unternehmen = min(5, gesamte_nachfrage)
+        
+        # Sortiere Veranstaltungen nach Nachfrage, damit Veranstaltungen mit höherer Nachfrage bevorzugt werden
+        veranstaltungen_sorted = sorted(veranstaltungen, key=lambda x: -x['Benötigte Veranstaltungen'])
+        slots_verbleibend = gesamtveranstaltungen_pro_unternehmen
+        
+        # Anteilige Zuweisung der Slots
+        for veranstaltung in veranstaltungen_sorted:
+            if slots_verbleibend > 0:
+                # Zuweisung basierend auf der relativen Nachfrage
+                anteilige_slots = np.ceil(veranstaltung['Benötigte Veranstaltungen'] / gesamte_nachfrage * gesamtveranstaltungen_pro_unternehmen)
+                slots_für_veranstaltung = min(slots_verbleibend, anteilige_slots)
+                slots_verbleibend -= slots_für_veranstaltung
+                
+                # Finde einen Raum und weise die Slots zu
+                for raum, slots in raum_zu_veranstaltung.items():
+                    if len(slots) + slots_für_veranstaltung <= 5:
+                        raum_zu_veranstaltung[raum].extend([veranstaltung['Nr. ']] * int(slots_für_veranstaltung))
+                        break
+                else:
+                    print(f"Warnung: Nicht genügend Platz für Veranstaltung {veranstaltung['Nr. ']} von {unternehmen}.")
+
+    # Bearbeite Veranstaltungen von Unternehmen mit nur einer Veranstaltung
+    verarbeitete_veranstaltungen = set(v['Nr. '] for unternehmen in unternehmen_mehrfach for v in unternehmen_mehrfach[unternehmen])
+    einzelveranstaltungen = veranstaltungsliste_df[~veranstaltungsliste_df['Nr. '].isin(verarbeitete_veranstaltungen)]
+
+    for _, veranstaltung in einzelveranstaltungen.iterrows():
+        benötigte_veranstaltungen = veranstaltung['Benötigte Veranstaltungen']
+        for raum in raum_zu_veranstaltung:
+            if len(raum_zu_veranstaltung[raum]) + benötigte_veranstaltungen <= 5:
+                raum_zu_veranstaltung[raum].extend([veranstaltung['Nr. ']] * benötigte_veranstaltungen)
+                break
+        else:
+            print(f"Warnung: Kein geeigneter Raum für Veranstaltung {veranstaltung['Nr. ']} gefunden.")
+
+    return raum_zu_veranstaltung
 
 
 
 def main():
-    basisimportpfad = 'C://Users//T1485841//Documents//Projekte//Schulprojekt//DPA//Imports//'
+    basisimportpfad = 'C://Users//Alex-//Desktop//Schulprojekt//DPA//Imports//'
     schueler_wahlen_path = basisimportpfad + 'IMPORT_BOT2_Wahl.xlsx'
     raumliste_path = basisimportpfad + 'IMPORT_BOT0_Raumliste.xlsx'
     veranstaltungsliste_path = basisimportpfad + 'IMPORT_BOT1_Veranstaltungsliste.xlsx'
