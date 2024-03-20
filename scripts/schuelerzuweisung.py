@@ -1,5 +1,6 @@
 import pandas as pd
 from collections import defaultdict
+import random
 
 # Pfade zu den Dateien
 basisimportpfad = 'C://Users//Alex-//Desktop//Schulprojekt//DPA//data//'
@@ -48,7 +49,55 @@ for wahl_nr in range(1, 7):  # Von Wahl 1 bis Wahl 6
                     veranstaltungen_teilnehmer[gewaehlte_veranstaltung][slot].append(index)
                     break  # Beende die Schleife, sobald eine Zuweisung erfolgt ist
 
-# Umwandlung der Zuweisungen in ein Format, das für den Export geeignet ist
+# Ergänzung: Identifiziere Schüler ohne Wahlen
+schueler_ohne_wahlen = [index for index, row in schuelerwahlen_df.iterrows() if row[['Wahl 1', 'Wahl 2', 'Wahl 3', 'Wahl 4', 'Wahl 5', 'Wahl 6']].isna().all()]
+
+# Ergänzung: Zufällige Zuweisung für Schüler ohne Wahlen
+for schueler_index in schueler_ohne_wahlen:
+    zugewiesen = False
+    while not zugewiesen:
+        zufaellige_veranstaltung = random.choice(list(veranstaltungs_slots.keys()))
+        verfügbare_slots = list(veranstaltungs_slots[zufaellige_veranstaltung].keys())
+        zufaelliger_slot = random.choice(verfügbare_slots)
+        
+        max_teilnehmer = veranstaltungsliste_df.loc[veranstaltungsliste_df['Nr.'] == zufaellige_veranstaltung, 'Max. Teilnehmer'].iloc[0]
+        if len(veranstaltungen_teilnehmer[zufaellige_veranstaltung][zufaelliger_slot]) < max_teilnehmer:
+            schueler_zuweisungen[schueler_index]['zuweisungen'].append({
+                'Veranstaltung': zufaellige_veranstaltung,
+                'Slot': zufaelliger_slot,
+                'Wunsch': False
+            })
+            schueler_zuweisungen[schueler_index]['belegte_slots'].add(zufaelliger_slot)
+            veranstaltungen_teilnehmer[zufaellige_veranstaltung][zufaelliger_slot].append(schueler_index)
+            zugewiesen = True
+
+# Ergänzung: Zufällige Zuweisung für Schüler mit unvollständigen Belegungen
+for schueler_index, zuweisungen_info in schueler_zuweisungen.items():
+    # Prüfe, ob der Schüler weniger als 5 belegte Slots hat
+    if len(zuweisungen_info['belegte_slots']) < 5:
+        # Versuche, dem Schüler zusätzliche zufällige Veranstaltungen zuzuweisen
+        while len(zuweisungen_info['belegte_slots']) < 5:
+            zufaellige_veranstaltung = random.choice(list(veranstaltungs_slots.keys()))
+            verfügbare_slots = list(veranstaltungs_slots[zufaellige_veranstaltung].keys())
+            # Entferne Slots, die bereits belegt sind
+            verfügbare_slots = [slot for slot in verfügbare_slots if slot not in zuweisungen_info['belegte_slots']]
+            
+            # Wenn keine verfügbaren Slots übrig sind, breche die Schleife ab und versuche eine andere Veranstaltung
+            if not verfügbare_slots:
+                continue
+
+            zufaelliger_slot = random.choice(verfügbare_slots)
+            max_teilnehmer = veranstaltungsliste_df.loc[veranstaltungsliste_df['Nr.'] == zufaellige_veranstaltung, 'Max. Teilnehmer'].iloc[0]
+            if len(veranstaltungen_teilnehmer[zufaellige_veranstaltung][zufaelliger_slot]) < max_teilnehmer:
+                schueler_zuweisungen[schueler_index]['zuweisungen'].append({
+                    'Veranstaltung': zufaellige_veranstaltung,
+                    'Slot': zufaelliger_slot,
+                    'Wunsch': False
+                })
+                schueler_zuweisungen[schueler_index]['belegte_slots'].add(zufaelliger_slot)
+                veranstaltungen_teilnehmer[zufaellige_veranstaltung][zufaelliger_slot].append(schueler_index)
+
+# Aktualisiere export_data mit allen Zuweisungen, einschließlich der vollständig zufälligen Zuweisungen
 export_data = []
 for schueler_index, zuweisungen_info in schueler_zuweisungen.items():
     schueler_row = schuelerwahlen_df.iloc[schueler_index]
@@ -62,7 +111,7 @@ for schueler_index, zuweisungen_info in schueler_zuweisungen.items():
             'Vorname': schueler_row['Vorname'],
             'Veranstaltungsnummer': veranstaltungsnummer,
             'Slot': slot,
-            'Auf Wunsch zugewiesen': 'Ja' if wunsch else 'Nein'
+            'Auf Wunsch zugewiesen': 'Ja' if wunsch else 'Zufällig'
         })
 
 # Erstelle einen DataFrame für den Export
@@ -71,4 +120,4 @@ export_df = pd.DataFrame(export_data)
 # Exportiere den DataFrame in eine Excel-Datei
 export_df.to_excel(exportpfad, index=False)
 
-print(f"Die Zuweisungen wurden erfolgreich nach {exportpfad} exportiert.")
+print(f"Die vollständigen Zuweisungen wurden erfolgreich nach {exportpfad} exportiert.")
