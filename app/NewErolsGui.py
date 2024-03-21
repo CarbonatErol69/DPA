@@ -70,8 +70,8 @@ def schnittstelle():
     
     # Überprüfen, ob alle Dateipfade ausgewählt wurden
     if file_path_1 and file_path_2 and file_path_3:
-        raum = Raumzuweisung()
-        schueler = Schuelerzuweisung()
+        raum = Raumzuweisung(file_path_1, file_path_2, file_path_3)
+        #schueler = Schuelerzuweisung()
     else:
         # Zeige eine Fehlermeldung, wenn nicht alle Dateipfade ausgewählt wurden
         messagebox.showerror("Fehler", "Bitte wählen Sie alle Excel-Dateien aus.")
