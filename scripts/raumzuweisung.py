@@ -126,6 +126,8 @@ def exportiere_raumzuweisungen(raum_zu_veranstaltung, veranstaltungsliste_df, ex
 
 def main():
     basisimportpfad = 'C://Users//Alex-//Desktop//Schulprojekt//DPA//Imports//'
+    exportpfad = 'C://Users//Alex-//Desktop//Schulprojekt//DPA//data//Raumzuweisungen.xlsx'
+
     schueler_wahlen_path = basisimportpfad + 'IMPORT_BOT2_Wahl.xlsx'
     raumliste_path = basisimportpfad + 'IMPORT_BOT0_Raumliste.xlsx'
     veranstaltungsliste_path = basisimportpfad + 'IMPORT_BOT1_Veranstaltungsliste.xlsx'
@@ -143,7 +145,7 @@ def main():
         print(f"Raum {raum} beherbergt Veranstaltungen: {veranstaltungen}")
 
 
-    exportpfad = 'C://Users//Alex-//Desktop//Schulprojekt//DPA//data//Raumzuweisungen.xlsx'
+    
     exportiere_raumzuweisungen(raum_zu_veranstaltung, veranstaltungsliste_df, exportpfad)
 
 if __name__ == "__main__":
