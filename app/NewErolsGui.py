@@ -2,7 +2,9 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 import openpyxl
 import os
-from AlexGPT import AlexGPT
+from raumzuweisung import Raumzuweisung
+from schuelerzuweisung import Schuelerzuweisung
+'''🎉🥳 we are 'bout to finish this shit🎉🥳'''
 
 class RoundedButton(tk.Button):
     def __init__(self, master=None, **kwargs):
@@ -68,10 +70,8 @@ def schnittstelle():
     
     # Überprüfen, ob alle Dateipfade ausgewählt wurden
     if file_path_1 and file_path_2 and file_path_3:
-        # Übergeben der Dateipfade an die AlexGPT-Klasse
-        alexGPT = AlexGPT(file_path_1, file_path_2, file_path_3)
-        # Aufruf der Hauptmethode der AlexGPT-Klasse
-        alexGPT.main()
+        raum = Raumzuweisung()
+        schueler = Schuelerzuweisung()
     else:
         # Zeige eine Fehlermeldung, wenn nicht alle Dateipfade ausgewählt wurden
         messagebox.showerror("Fehler", "Bitte wählen Sie alle Excel-Dateien aus.")
