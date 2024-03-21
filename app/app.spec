@@ -1,0 +1,2 @@
+# app.spec
+a = Analysis(['NewErolsGui.py'], pathex=['.'], binaries=None, datas=[('raumzuweisung.py', '.')], hiddenimports=[], hookspath=[], runtime_hooks=[], excludes=[], win_no_prefer_redirects=False, win_private_assemblies=False)
