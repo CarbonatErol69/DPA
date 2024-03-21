@@ -3,8 +3,8 @@ from collections import defaultdict
 import random
 
 # Pfade zu den Dateien
-basisimportpfad = 'C://Users//Alex-//Desktop//Schulprojekt//DPA//data//'
-exportpfad = 'C://Users//Alex-//Desktop//Schulprojekt//DPA//data//Schueler_Zuweisungen.xlsx'
+basisimportpfad = 'C://Users//T1485841//Documents//Projekte//Schulprojekt//DPA//Data//'
+exportpfad = 'C://Users//T1485841//Documents//Projekte//Schulprojekt//DPA//data//Schueler_Zuweisungen.xlsx'
 
 schueler_wahlen_path = basisimportpfad + 'IMPORT_BOT2_Wahl.xlsx'
 raumliste_path = basisimportpfad + 'Raumzuweisungen.xlsx'
