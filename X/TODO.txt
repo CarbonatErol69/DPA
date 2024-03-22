@@ -1,0 +1,5 @@
+ - Eigenschaften der .exe anpassen so dass richtiger Pfas ausgeführt wird und/oder Handbuch anpassen
+ - Testen ob die .exe auch auf anderen Rechnern funktioniert
+ - Richtiges Icon einfügen
+ - GUI status bar noch nicht da
+ 
