@@ -3,7 +3,6 @@ from tkinter import filedialog, messagebox
 import openpyxl
 import os
 from raumzuweisung import Raumzuweisung
-from schuelerzuweisung import Schuelerzuweisung
 '''🎉🥳 we are 'bout to finish this shit🎉🥳'''
 
 class RoundedButton(tk.Button):
