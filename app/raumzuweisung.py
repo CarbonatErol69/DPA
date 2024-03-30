@@ -26,34 +26,34 @@ class Raumzuweisung():
 
         return self.schuelerwahlen_df, self.raumliste_df, self.veranstaltungsliste_df
 
-    def verarbeite_schueler_wahlen(self):
+    def verarbeite_schueler_wahlen(schuelerwahlen_df):
         """Verarbeitet die Schülerwahlen und ermittelt die Gesamthäufigkeiten jeder Wahl."""
-        wahl_columns = [col for col in self.schuelerwahlen_df.columns if "Wahl" in col]
-        wahlen_count = self.schuelerwahlen_df[wahl_columns].apply(pd.Series.value_counts).sum(axis=1).astype(int)
+        wahl_columns = [col for col in schuelerwahlen_df.columns if "Wahl" in col]
+        wahlen_count = schuelerwahlen_df[wahl_columns].apply(pd.Series.value_counts).sum(axis=1).astype(int)
         wahlen_count_df = wahlen_count.reset_index()
         wahlen_count_df.columns = ['Wahl_Nummer', 'Anzahl_Wahlen']
         print(wahlen_count_df)
         return wahlen_count_df.sort_values(by='Anzahl_Wahlen', ascending=False)
 
-    def berechne_mindest_events_anpassung(self):
-        self.veranstaltungsliste_df = self.veranstaltungsliste_df.merge(self.wahlen_haeufigkeiten_df, left_on='Nr.', right_on='Wahl_Nummer', how='left')
-        self.veranstaltungsliste_df['Benötigte Veranstaltungen'] = self.veranstaltungsliste_df.apply(
+    def berechne_mindest_events_anpassung(veranstaltungsliste_df, wahlen_haeufigkeiten_df):
+        veranstaltungsliste_df = veranstaltungsliste_df.merge(wahlen_haeufigkeiten_df, left_on='Nr. ', right_on='Wahl_Nummer', how='left')
+        veranstaltungsliste_df['Benötigte Veranstaltungen'] = veranstaltungsliste_df.apply(
             lambda row: np.ceil(row['Anzahl_Wahlen'] / row['Max. Teilnehmer']) if row['Anzahl_Wahlen'] >= 10 else 0, axis=1).astype(int)
-        self.veranstaltungsliste_df.drop(['Wahl_Nummer', 'Anzahl_Wahlen'], axis=1, inplace=True)
-        print(self.veranstaltungsliste_df)
-        return self.veranstaltungsliste_df
+        veranstaltungsliste_df.drop(['Wahl_Nummer', 'Anzahl_Wahlen'], axis=1, inplace=True)
+        print(veranstaltungsliste_df)
+        return veranstaltungsliste_df
 
-    def identifiziere_mehrfache_veranstaltungen(self):
+    def identifiziere_mehrfache_veranstaltungen(veranstaltungsliste_df):
         """Identifiziert Unternehmen mit mehreren Veranstaltungen."""
         unternehmen_zu_veranstaltungen = defaultdict(list)
-        for _, row in self.veranstaltungsliste_df.iterrows():
+        for _, row in veranstaltungsliste_df.iterrows():
             unternehmen_zu_veranstaltungen[row['Unternehmen']].append(row)
         mehrfache_veranstaltungen = {k: v for k, v in unternehmen_zu_veranstaltungen.items() if len(v) > 1}
         return mehrfache_veranstaltungen
 
-    def verteile_veranstaltungen(self):
-        self.raum_zu_veranstaltung = {raum: [] for raum in self.raumliste_df['Raum']}
-        unternehmen_mehrfach = self.identifiziere_mehrfache_veranstaltungen()
+    def verteile_veranstaltungen(raumliste_df, veranstaltungsliste_df, wahlen_haeufigkeiten_df):
+        raum_zu_veranstaltung = {raum: [] for raum in raumliste_df['Raum']}
+        unternehmen_mehrfach = identifiziere_mehrfache_veranstaltungen(veranstaltungsliste_df)
 
         for unternehmen, veranstaltungen in unternehmen_mehrfach.items():
             # Berechne die Gesamtnachfrage für die Veranstaltungen des Unternehmens
@@ -73,27 +73,89 @@ class Raumzuweisung():
                     slots_verbleibend -= slots_für_veranstaltung
                     
                     # Finde einen Raum und weise die Slots zu
-                    for raum, slots in self.raum_zu_veranstaltung.items():
+                    for raum, slots in raum_zu_veranstaltung.items():
                         if len(slots) + slots_für_veranstaltung <= 5:
-                            self.raum_zu_veranstaltung[raum].extend([veranstaltung['Nr.']] * int(slots_für_veranstaltung))
+                            raum_zu_veranstaltung[raum].extend([veranstaltung['Nr. ']] * int(slots_für_veranstaltung))
                             break
                     else:
-                        print(f"Warnung: Nicht genügend Platz für Veranstaltung {veranstaltung['Nr.']} von {unternehmen}.")
+                        print(f"Warnung: Nicht genügend Platz für Veranstaltung {veranstaltung['Nr. ']} von {unternehmen}.")
 
         # Bearbeite Veranstaltungen von Unternehmen mit nur einer Veranstaltung
-        verarbeitete_veranstaltungen = set(v['Nr.'] for unternehmen in unternehmen_mehrfach for v in unternehmen_mehrfach[unternehmen])
-        einzelveranstaltungen = self.veranstaltungsliste_df[~self.veranstaltungsliste_df['Nr.'].isin(verarbeitete_veranstaltungen)]
+        verarbeitete_veranstaltungen = set(v['Nr. '] for unternehmen in unternehmen_mehrfach for v in unternehmen_mehrfach[unternehmen])
+        einzelveranstaltungen = veranstaltungsliste_df[~veranstaltungsliste_df['Nr. '].isin(verarbeitete_veranstaltungen)]
 
         for _, veranstaltung in einzelveranstaltungen.iterrows():
             benötigte_veranstaltungen = veranstaltung['Benötigte Veranstaltungen']
-            for raum in self.raum_zu_veranstaltung:
-                if len(self.raum_zu_veranstaltung[raum]) + benötigte_veranstaltungen <= 5:
-                    self.raum_zu_veranstaltung[raum].extend([veranstaltung['Nr.']] * benötigte_veranstaltungen)
+            for raum in raum_zu_veranstaltung:
+                if len(raum_zu_veranstaltung[raum]) + benötigte_veranstaltungen <= 5:
+                    raum_zu_veranstaltung[raum].extend([veranstaltung['Nr. ']] * benötigte_veranstaltungen)
                     break
             else:
-                print(f"Warnung: Kein geeigneter Raum für Veranstaltung {veranstaltung['Nr.']} gefunden.")
+                print(f"Warnung: Kein geeigneter Raum für Veranstaltung {veranstaltung['Nr. ']} gefunden.")
 
-        return self.raum_zu_veranstaltung
+        return raum_zu_veranstaltung
+
+
+    def optimiere_raumplan(raum_zu_veranstaltung, veranstaltungsliste_df):
+        # Erstelle ein Dictionary, um die neuen Zuweisungen zu speichern
+        neue_raum_zu_veranstaltung = defaultdict(list)
+
+        # Erstelle ein Dictionary, um die frühesten Zeitpunkte der Veranstaltungen zu speichern
+        fruehester_zeitpunkt = {}
+
+        # Iteriere über die Veranstaltungen und speichere ihre frühesten Zeitpunkte
+        for _, veranstaltung in veranstaltungsliste_df.iterrows():
+            fruehester_zeitpunkt[veranstaltung['Nr. ']] = veranstaltung['Frühester Zeitpunkt']
+
+        # Iteriere über jeden Raum und die zugehörigen Veranstaltungen
+        for raum, veranstaltungen in raum_zu_veranstaltung.items():
+            # Erstelle leere Listen für Veranstaltungen mit Zeitpunkt B und C
+            veranstaltungen_b = []
+            veranstaltungen_c = []
+
+            # Iteriere über jede Veranstaltung im aktuellen Raum und klassifiziere sie nach Zeitpunkt
+            for veranstaltung_nr in veranstaltungen:
+                # Finde den frühesten Zeitpunkt der Veranstaltung
+                zeitpunkt = fruehester_zeitpunkt[veranstaltung_nr]
+
+                # Füge die Veranstaltung zur entsprechenden Liste hinzu
+                if zeitpunkt == 'B':
+                    veranstaltungen_b.append(veranstaltung_nr)
+                elif zeitpunkt == 'C':
+                    veranstaltungen_c.append(veranstaltung_nr)
+
+            # Neue Zuweisungen für Zeitpunkt B
+            if veranstaltungen_b:
+                # Suche nach einem neuen Raum ohne Belegungen für Zeitpunkt B
+                neuer_raum_b = next((r for r in raum_zu_veranstaltung if not raum_zu_veranstaltung[r]), None)
+                if neuer_raum_b:
+                    # Markiere den ersten Slot mit 'X' und füge die Veranstaltungen ab dem zweiten Slot ein
+                    neue_raum_zu_veranstaltung[neuer_raum_b].append('X')
+                    neue_raum_zu_veranstaltung[neuer_raum_b].extend(veranstaltungen_b)
+                    # Entferne die Veranstaltungen mit Zeitpunkt B aus dem aktuellen Raum
+                    raum_zu_veranstaltung[raum] = [v for v in raum_zu_veranstaltung[raum] if v not in veranstaltungen_b]
+                else:
+                    print(f"Warnung: Kein freier Raum für Veranstaltungen mit Zeitpunkt B gefunden.")
+
+            # Neue Zuweisungen für Zeitpunkt C
+            if veranstaltungen_c:
+                # Suche nach einem neuen Raum ohne Belegungen für Zeitpunkt C
+                neuer_raum_c = next((r for r in raum_zu_veranstaltung if len(raum_zu_veranstaltung[r]) < 2), None)
+                if neuer_raum_c:
+                    # Markiere den ersten und zweiten Slot mit 'X' und füge die Veranstaltungen ab dem dritten Slot ein
+                    neue_raum_zu_veranstaltung[neuer_raum_c].extend(['X', 'X'])
+                    neue_raum_zu_veranstaltung[neuer_raum_c].extend(veranstaltungen_c)
+                    # Entferne die Veranstaltungen mit Zeitpunkt C aus dem aktuellen Raum
+                    raum_zu_veranstaltung[raum] = [v for v in raum_zu_veranstaltung[raum] if v not in veranstaltungen_c]
+                else:
+                    print(f"Warnung: Kein freier Raum für Veranstaltungen mit Zeitpunkt C gefunden.")
+
+        # Füge die neuen Zuweisungen hinzu
+        raum_zu_veranstaltung.update(neue_raum_zu_veranstaltung)
+
+        print("Die Raumzuweisungen wurden optimiert.")
+        print(raum_zu_veranstaltung)
+        return raum_zu_veranstaltung
 
     def exportiere_raumzuweisungen(self):
         # Initialisiere eine Liste für die Exportdaten
